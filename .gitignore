@@ -1,0 +1,19 @@
+# Python and OS clutter 
+__pycache__/ 
+*.pyc 
+.DS_Store 
+ 
+# Environment and Credentials 
+.env 
+.venv/ 
+venv/ 
+ 
+# Data and Large Files 
+*.csv 
+*.json 
+*.xlsx 
+*.sqlite3 
+ 
+# IDEs and Tools 
+.vscode/ 
+.ipynb_checkpoints/ 
