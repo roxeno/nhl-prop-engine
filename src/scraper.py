@@ -108,7 +108,8 @@ def execute_skater_career():
     df = pd.concat(all_df,ignore_index=True)
     #Only needed section
     df['career_shots_per_60'] = df['shots'] / df['gamesPlayed'] /df['timeOnIcePerGame'] * 3600
-    df = df[['playerId','career_shots_per_60']]
+    df['career_toi'] = df['timeOnIcePerGame']
+    df = df[['playerId','career_shots_per_60','career_toi']]
     
     final_destination = target_folder / desired_extracted_name
     counter = 1
@@ -239,13 +240,13 @@ def execute_defensive_season():
         #Only needed section
         dfA = dfA[['teamFullName','blockedShotsPer60']]
         df = pd.merge(dfA, dfB, on='teamFullName', how='inner')
-        df = df[['blockedShotsPer60','playerTeam']]
+        #df = df[['blockedShotsPer60','playerTeam']]
+
+        league_avg = df["blockedShotsPer60"].mean()
+        df["leagueAvgBlockedShotsPer60"] = league_avg
+        df = df[['playerTeam','blockedShotsPer60','leagueAvgBlockedShotsPer60']]
     
         final_destination = target_folder / desired_extracted_name
-        counter = 1
-        while final_destination.exists():
-            final_destination = target_folder / f"{base_name}_{counter}{extension}"
-            counter += 1   
         #Save to CSV
         df.to_csv(final_destination, index=False, encoding="utf-8")
         print(f"Success! Saved {len(df)} teams records into '{final_destination}'.")
@@ -276,7 +277,6 @@ if __name__ == "__main__":
             "all     : Execute all 3 jobs sequentially"
         )
     )
-    
     args = parser.parse_args()
     
     # Route execution based on parameters passed to sys.argv

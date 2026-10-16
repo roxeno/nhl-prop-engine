@@ -48,24 +48,28 @@ def execute_trimskaters():
     #filtering the data to only include few stuff
     #,'playerTeam' fenwick
     df = df[df['situation'] == 'all']
-    
-    df = df.groupby(['playerId','name','playerTeam'])[['icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
+    df['games'] = 1   # each row = one game
+    df = df.groupby(['playerId','name','playerTeam'])[['games','icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
+    df = df.copy()
 
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
     df['fenwick_per_60'] = (df['I_F_shotsOnGoal'] + df['I_F_missedShots']) / (df['icetime'] / 3600)
-
-    df = df[['playerId','name','playerTeam','shots_per_60','fenwick_per_60']]
+    
     df = pd.merge(df, career_file_skater, on='playerId', how='inner')
 
-    final_destination = output_dir_skater / desired_extracted_name
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
-    counter = 1
+    K = 10  # shrinkage constant; higher = trust career more
 
-    # Loop to increment the filename if it already exists
-    while final_destination.exists():
-        final_destination = output_dir_skater / f"{base_name}-{counter}{extension}"
-        counter += 1
+    df['season_weight'] = df['games'] / (df['games'] + K)
+    df['career_weight'] = 1 - df['season_weight']
+
+    df['playerweighted_shotsper60'] = (
+    df['season_weight'] * df['shots_per_60'] +
+    df['career_weight'] * df['career_shots_per_60'])
+
+    season_avg_toi_sec = df['icetime'] / df['games']
+    df['blendedavgtoimin'] = ((0.6 * season_avg_toi_sec) + (0.4 * df['career_toi'])) / 60
+
+    final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
 
 def execute_trimdefenders():
@@ -77,17 +81,9 @@ def execute_trimdefenders():
     #,'playerTeam' fenwick
     
     df = pd.merge(df, career_file_defender, on='playerTeam', how='inner')
-    df = df[['playerTeam','blockedShotsPer60','careerblockedShotsPer60']]
+    df = df[['playerTeam','blockedShotsPer60','careerblockedShotsPer60','leagueAvgBlockedShotsPer60']]
 
     final_destination = output_dir_defender / desired_extracted_name
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
-    counter = 1
-
-    # Loop to increment the filename if it already exists
-    while final_destination.exists():
-        final_destination = output_dir_defender / f"{base_name}-{counter}{extension}"
-        counter += 1
     df.to_csv(final_destination, index=False)
 
 def execute_commenceGameNight():
@@ -104,7 +100,7 @@ def execute_commenceGameNight():
     dfB = dfB.rename(columns={'playerTeam':'opponent'})
     df = pd.merge(df, dfB, on='opponent', how='inner')
 
-    df = df[['playerId','name','playerTeam','home_or_away','shots_per_60','fenwick_per_60','career_shots_per_60','opponent','blockedShotsPer60','careerblockedShotsPer60']]
+    df = df[['name','playerTeam','home_or_away','shots_per_60','fenwick_per_60','career_shots_per_60','opponent','blockedShotsPer60','careerblockedShotsPer60','leagueAvgBlockedShotsPer60','blendedavgtoimin']]
 
     final_destination = output_dir_built / desired_extracted_name
 
@@ -123,11 +119,11 @@ def main():
     # Add your command line choice argument mapping directly to your functions
     parser.add_argument(
         "action",
-        choices=["trimS", "trimD", "gamenight", "all"],
+        choices=["trimS", "trimD", "gametime", "all"],
         help=(
             "trimS   : trim skater file"
             "trimD   : trim defender file"
-            "gamenight : gamenight schedule"
+            "gametime : gamenight schedule"
             "all     : Execute all 3 jobs sequentially"
         )
     )
