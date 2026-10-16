@@ -1,19 +1,23 @@
-# Python and OS clutter 
-__pycache__/ 
-*.pyc 
-.DS_Store 
- 
-# Environment and Credentials 
-.env 
-.venv/ 
-venv/ 
- 
-# Data and Large Files 
-*.csv 
-*.json 
-*.xlsx 
-*.sqlite3 
- 
-# IDEs and Tools 
-.vscode/ 
-.ipynb_checkpoints/ 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Data
+data/raw/
+data/trimmed/
+data/career/
+data/processed/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
