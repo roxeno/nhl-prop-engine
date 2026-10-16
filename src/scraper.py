@@ -293,6 +293,7 @@ if __name__ == "__main__":
     
     elif args.action == "all":
         print("Executing comprehensive batch sequence...")
+        execute_skater_career()
         execute_zip_extractor()
         execute_today_schedule()
         execute_defensive_career()

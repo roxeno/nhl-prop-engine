@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -13,6 +14,10 @@ import sys
 #../data/raw/skaters/filename
 filename = sys.argv[1]
 
+#today date
+TODAY_STR = date.today().strftime("%Y-%m-%d")
+
+
 #outputfile
 output_dir_skater = Path("../data/trimmedSkaters/")
 output_dir_defender = Path("../data/trimmedDefenders/")
@@ -22,12 +27,13 @@ output_dir_built = Path('../data/playingToday')
 career_file_skater = pd.read_csv("../data/raw/skaters/Career_hockeyskater.csv")
 career_file_defender = pd.read_csv("../data/raw/defenders/Career_hockeyTeam_defensive.csv")
 
-#trimmed path
-trimmed_file_skater = pd.read_csv('../data/trimmedSkaters/TrimmedSeason_hockeyskater.csv')
-trimmed_file_defender = pd.read_csv('../data/trimmedDefenders/TrimmedSeason_hockeydefender.csv')
+#seasonfile path
+season_file_skater = pd.read_csv("../data/raw/skaters/Season_hockeyskater.csv")
+season_file_defender = pd.read_csv("../data/raw/defenders/Season_hockeyTeam_defensive.csv")
 
 #get schedule
-get_tonightGames = pd.read_csv('../data/playingToday/games_2026-10-15.csv')
+schedulefile = f"../data/playingToday/games_{TODAY_STR}.csv"
+get_tonightGames = pd.read_csv(schedulefile)
     
 
 # ==========================================
@@ -35,7 +41,7 @@ get_tonightGames = pd.read_csv('../data/playingToday/games_2026-10-15.csv')
 # ==========================================
 
 def execute_trimskaters():
-    df = pd.read_csv(filename)
+    df = season_file_skater
     
     desired_extracted_name = "TrimmedSeason_hockeyskater.csv"
     
@@ -63,7 +69,7 @@ def execute_trimskaters():
     df.to_csv(final_destination, index=False)
 
 def execute_trimdefenders():
-    df = pd.read_csv(filename)
+    df = season_file_defender
     
     desired_extracted_name = "TrimmedSeason_hockeydefender.csv"
     
@@ -85,6 +91,10 @@ def execute_trimdefenders():
     df.to_csv(final_destination, index=False)
 
 def execute_commenceGameNight():
+    #trimmed path
+    trimmed_file_skater = pd.read_csv('../data/trimmedSkaters/TrimmedSeason_hockeyskater.csv')
+    trimmed_file_defender = pd.read_csv('../data/trimmedDefenders/TrimmedSeason_hockeydefender.csv')
+
     desired_extracted_name = "tonightGame.csv"
     dfB = trimmed_file_defender
     #filtering the data to only include few stuff
@@ -105,31 +115,38 @@ def execute_commenceGameNight():
 # ==========================================
 def main():
     parser = argparse.ArgumentParser(
-        prog="python -m code",
-        description="NHL stats pipeline: trim skaters, trim defenders, or prep game night."
+            description="Unified Data Utility Platform",
+            formatter_class=argparse.RawTextHelpFormatter
     )
-    sub = parser.add_subparsers(dest="action", required=True)
+    
 
-    # --- trimS ---
-    p_s = sub.add_parser("trimS", help="Trim NHL skaters and add career stats")
-    p_s.add_argument("file", type=str, help="Path to input skaters CSV")
-
-    # --- trimD ---
-    p_d = sub.add_parser("trimD", help="Trim NHL defenders and add career stats")
-    p_d.add_argument("file", type=str, help="Path to input defenders CSV")
-
-    # --- gametime ---
-    sub.add_parser("gametime", help="Prep tonight's games (no file needed)")
+    # Add your command line choice argument mapping directly to your functions
+    parser.add_argument(
+        "action",
+        choices=["trimS", "trimD", "gamenight", "all"],
+        help=(
+            "trimS   : trim skater file"
+            "trimD   : trim defender file"
+            "gamenight : gamenight schedule"
+            "all     : Execute all 3 jobs sequentially"
+        )
+    )
 
     args = parser.parse_args()
 
-    # --- dispatch ---
     if args.action == "trimS":
-        execute_trimskaters(args.file)
+        execute_trimskaters()
     elif args.action == "trimD":
-        execute_trimdefenders(args.file)
+        execute_trimdefenders()
     elif args.action == "gametime":
         execute_commenceGameNight()
+    elif args.action == "all":
+        print("Executing comprehensive batch sequence...")
+        execute_trimskaters()
+        execute_trimdefenders()
+        execute_commenceGameNight()
+
+   
 
 
 if __name__ == "__main__":
