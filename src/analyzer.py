@@ -1,7 +1,9 @@
-from pathlib import Path
 from scipy.stats import poisson
+from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import numpy as np
+import shutil
 
 import argparse
 
@@ -12,23 +14,14 @@ import os
 file = Path("../data/playingToday/tonightGame.csv")
 outputDir = Path("../data/built/")
 
+today = datetime.now().strftime("%Y-%m-%d")
+outputDirCache = Path("../data/logs/")
+cachefile = outputDirCache / f"{today}-game.csv"
+
 weight = 0.2 #starting of season
 # weight = 0.4 #middle of season
 # weight = 0.8 #late of season
 
-#def opponent_factor(opp_rate, league_rate):
-    #factor = opp_rate / league_rate
-
-#def expected_lambda(rate_per_60, toi_min, opp_factor, home):
-   # if (home == "home"):
-   #     home_mult = 1.05
-   #else:
-   #     home_mult = 0.97
-
-#lam = rate_per_60 * (toi_min / 60) * opp_factor * home_mult
-
-#Poisson call
-#full_distribution(λ, max_n)
 
 #playerId,name,playerTeam,home_or_away,shots_per_60,fenwick_per_60,career_shots_per_60,opponent,blockedShotsPer60,careerblockedShotsPer60,blendedavgtoimin
 #shots_per_60,fenwick_per_60,career_shots_per_60,blockedShotsPer60,careerblockedShotsPer60,blendedavgtoimin
@@ -49,6 +42,8 @@ def execute_calculation():
     final_destination = outputDir / desired_extracted_name
 
     df.to_csv(final_destination,index=False)
+    shutil.copy(final_destination,cachefile)
+    
 
 
 # ==========================================

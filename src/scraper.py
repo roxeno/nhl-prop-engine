@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date,datetime,timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +19,11 @@ DOWNLOAD_DIR = Path("../data")
 DOWNLOAD_DIR.mkdir(exist_ok=True)  # Ensures the folder exists
 
 TODAY_STR = date.today().strftime("%Y-%m-%d")
+
+def get_yesterday_str():
+    """Returns yesterday's date in YYYY-MM-DD format."""
+    yesterday = datetime.now() - timedelta(days=1)
+    return yesterday.strftime("%Y-%m-%d")
 
 # ==========================================
 # 2. THE THREE TASK ENGINES
@@ -126,9 +131,11 @@ def execute_skater_career():
 def execute_today_schedule():
     """Engine 3: Downloads and flattens NHL schedule json into a CSV."""
     print(f"[{TODAY_STR}] Running NHL schedule Export...")
+    yesterday_str = get_yesterday_str()
     url = f"https://api-web.nhle.com/v1/schedule/{TODAY_STR}"
     target_directory = DOWNLOAD_DIR/ 'playingToday'
     file_name = f'games_{TODAY_STR}.csv'
+    file_to_delete = target_directory / f"games_{yesterday_str}.csv"
     full_path = os.path.join(target_directory, file_name)
     
     response = requests.get(url, timeout=15).json()
@@ -153,7 +160,12 @@ def execute_today_schedule():
             'home_or_away': 'away',
             'opponent': home_team,
         })
-
+    
+    if file_to_delete.exists():
+        os.remove(file_to_delete)
+        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
+    else:
+        print(f"✅ No schedule found to delete for {yesterday_str}.")
     df = pd.DataFrame(rows)
     df.to_csv(full_path, index=False)
     print(f"Data saved successfully to: {full_path}")

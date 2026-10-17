@@ -17,6 +17,8 @@ filename = sys.argv[1]
 #today date
 TODAY_STR = date.today().strftime("%Y-%m-%d")
 
+#K tuning ; Tuning based on gamesplayed; Early season trust career; Late season trust season stats
+K = 10  # shrinkage constant; higher = trust career more
 
 #outputfile
 output_dir_skater = Path("../data/trimmedSkaters/")
@@ -56,8 +58,6 @@ def execute_trimskaters():
     df['fenwick_per_60'] = (df['I_F_shotsOnGoal'] + df['I_F_missedShots']) / (df['icetime'] / 3600)
     
     df = pd.merge(df, career_file_skater, on='playerId', how='inner')
-
-    K = 10  # shrinkage constant; higher = trust career more
 
     df['season_weight'] = df['games'] / (df['games'] + K)
     df['career_weight'] = 1 - df['season_weight']
