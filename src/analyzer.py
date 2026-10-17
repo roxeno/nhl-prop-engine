@@ -30,7 +30,7 @@ def execute_calculation():
     #blended = weight * current + (1-weight) * career
     df['playerweighted_shotsper60'] = (weight * df['shots_per_60']) + ((1-weight) * df['career_shots_per_60'])
     df['opponent_weighted_XGA'] = (weight * df['team_xGA_per_60']) + ((1-weight)* df['Career_team_xGA_per_60'])
-    df['opponent_factor'] = (df['leagueAvgXGAper60']/df['opponent_weighted_XGA'])
+    df['opponent_factor'] = (df['opponent_weighted_XGA']/df['leagueAvgXGAper60'])
     df['home_factor'] = np.where(df['home_or_away'] == 'home', 1.05, 0.97)
     df = df[['playerId','name','team','playerweighted_shotsper60','opponent','opponent_factor','blendedavgtoimin','home_factor']]
     df['expectedLambda'] = (df['playerweighted_shotsper60']*(df['blendedavgtoimin']/60)*df['opponent_factor']*df['home_factor'])

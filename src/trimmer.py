@@ -49,25 +49,24 @@ def execute_trimskaters():
     
     #filtering the data to only include few stuff
     #,'playerTeam' fenwick
+    
     df = df[df['situation'] == 'all']
-    df['games'] = 1   # each row = one game
-    df = df.groupby(['playerId','name','team'])[['games','icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
-    df = df.copy()
+    df = df.groupby(['playerId','name','team','games_played'])[['icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
 
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
     df['fenwick_per_60'] = (df['I_F_shotsOnGoal'] + df['I_F_missedShots']) / (df['icetime'] / 3600)
     
     df = pd.merge(df, career_file_skater, on='playerId', how='inner')
 
-    df['season_weight'] = df['games'] / (df['games'] + K)
+    df['season_weight'] = df['games_played'] / (df['games_played'] + K)
     df['career_weight'] = 1 - df['season_weight']
 
     df['playerweighted_shotsper60'] = (
     df['season_weight'] * df['shots_per_60'] +
     df['career_weight'] * df['career_shots_per_60'])
 
-    season_avg_toi_sec = df['icetime'] / df['games']
-    df['blendedavgtoimin'] = ((0.6 * season_avg_toi_sec) + (0.4 * df['career_toi'])) / 60
+    df['season_avg_toi_sec'] = df['icetime'] / df['games_played']
+    df['blendedavgtoimin'] = ((0.6 * df['season_avg_toi_sec']) + (0.4 * df['career_icetime'])) / 60
 
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)

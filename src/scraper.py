@@ -98,8 +98,8 @@ def execute_skater_career():
     df = pd.concat(all_df,ignore_index=True)
     #Only needed section
     df['career_shots_per_60'] = df['shots'] / df['gamesPlayed'] /df['timeOnIcePerGame'] * 3600
-    df['career_toi'] = df['timeOnIcePerGame']
-    df = df[['playerId','career_shots_per_60','career_toi']]
+    df['career_icetime'] = df['timeOnIcePerGame']
+    df = df[['playerId','career_shots_per_60','career_icetime']]
     
     final_destination = target_folder_skater / desired_extracted_name
     df.to_csv(final_destination, index=False, encoding="utf-8")
