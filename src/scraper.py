@@ -208,10 +208,6 @@ def execute_defensive_career():
         df = df.rename(columns={'blockedShotsPer60':'careerblockedShotsPer60'})
 
         final_destination = target_folder / desired_extracted_name
-        counter = 1
-        while final_destination.exists():
-            final_destination = target_folder / f"{base_name}_{counter}{extension}"
-            counter += 1   
         #Save to CSV
         df.to_csv(final_destination, index=False, encoding="utf-8")
         print(f"Success! Saved {len(df)} teams records into '{final_destination}'.")
