@@ -246,7 +246,7 @@ def execute_defensive_season():
     if player_data:
         #Convert directly to a structured DataFrame
         dfA = pd.DataFrame(player_data)
-        dfB = pd.read_csv('../assests/allTeamNamesv2.csv')
+        dfB = pd.read_csv('../assets/allTeamNamesv2.csv')
             
             
         #Only needed section
