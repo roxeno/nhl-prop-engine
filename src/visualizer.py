@@ -5,11 +5,11 @@ from scipy.stats import poisson
 from pathlib import Path
 
 DATA_PATH = "../data/built/readytouse.csv"
-
-def show_top_n(df: pd.DataFrame, n: int = 25):
+df = pd.read_csv(DATA_PATH)
+def show_top_n():
     """Horizontal bar chart of top players by expected lambda."""
     # Sort so the highest lambda is at the top
-    df_top = df.sort_values("expectedLambda", ascending=False).head(n)
+    df_top = df.sort_values("expectedLambda", ascending=False).head(25)
     
     # Reverse so Plotly plots the highest at the top of the y-axis
     df_top = df_top.iloc[::-1]
@@ -21,7 +21,7 @@ def show_top_n(df: pd.DataFrame, n: int = 25):
         orientation="h",
         color="expectedLambda",
         color_continuous_scale="Blues",
-        title=f"Top {n} Expected Shots on Goal (Tonight)",
+        title=f"Top 25 Expected Shots on Goal (Tonight)",
         labels={"expectedLambda": "Expected Shots (λ)", "name": ""},
         hover_data={
             "opponent": True,
@@ -41,7 +41,7 @@ def show_top_n(df: pd.DataFrame, n: int = 25):
     
     fig.show()
 
-def show_top_5_distributions(df: pd.DataFrame):
+def show_top_5_distributions():
     """
     Creates an interactive chart showing the top 5 players' distributions.
     """
@@ -124,7 +124,7 @@ def show_top_5_distributions(df: pd.DataFrame):
 
     fig.show()
 
-def show_player_distribution(player_name: str, df: pd.DataFrame):
+def show_player_distribution(player_name: str):
     """Vertical bar chart of P(exactly k shots) for a single player."""
     row = df[df["name"] == player_name]
     
@@ -174,10 +174,10 @@ def main():
     df = pd.read_csv(DATA_PATH)
 
     # Show the board
-    show_top_n(df, n=25)
+    show_top_n()
 
     # Show the interactive Top 5 chart
-    show_top_5_distributions(df)
+    show_top_5_distributions()
 
     # Show a specific player's distribution
     # show_player_distribution("Nathan MacKinnon", df)

@@ -1,26 +1,68 @@
-import pandas as pd
+import argparse
 import sys
-import numpy as np
-from pathlib import Path
+from datetime import datetime
 
-
+# Import your automated pipeline functions
+# (Make sure these match the actual names in your other files)
 from scraper import *
-from analyzer import *
-#from visualizer import plot_player_metric
-# player_id = 8482125
-# field_names "assists", "avgToi", "gamesPlayed"
- 
-def run_pipeline():
-    #filename = sys.argv[1]
+from trimmer import *
+from analyzer import execute_calculation
+from visualizer import *
+# from visualizer import show_top_n, show_player_distribution
+
+def run_gametime():
+    """Runs the full automated pipeline for today."""
+    print(f"\n🏒 Starting GameTime Pipeline...")
     
-        #Reading the data from the file
-   #df = pd.read_csv(filename)
+    # 1. Scrape
+    print("Step 1: Fetching schedule & team stats...")
+    execute_skater_career()
+    execute_zip_extractor()
+    execute_today_schedule()
+    execute_defensive_career()
+    execute_defensive_season()
+    
+    # 2. Trim (Assuming these automatically find the newest raw files)
+    print("Step 2: Trimming skaters & defenders...")
+    execute_trimskaters()
+    execute_trimdefenders()
+    execute_commenceGameNight()
+    
+    # 3. Analyze
+    print("Step 3: Calculating probabilities...")
+    execute_calculation()
 
     
+    
+    print("\n✅ GameTime Complete! readytouse.csv is ready.")
 
-    #TEST_PLAYER_ID = 8482125   # Cole Caufield
-    #getPlayerStat(TEST_PLAYER_ID,"gamesPlayed")
+
+def main():
+    # 1. Setup the parser
+    parser = argparse.ArgumentParser(
+        prog="python -m src.main",
+        description="NHL XGL Automated Pipeline"
+    )
+    
+    # 2. Add ONLY the action argument
+    parser.add_argument(
+        "action",
+        choices=["gametime", "visualize"],
+        help="The pipeline stage to run."
+    )
+    
+    # 3. Parse arguments
+    args = parser.parse_args()
+
+    # 4. Route execution
+    if args.action == "gametime":
+        run_gametime()
+    elif args.actions == "visualize":
+        print("Running model...")
+        show_top_n()
+        show_player_distribution()
+
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    main()
