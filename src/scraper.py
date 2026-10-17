@@ -25,60 +25,49 @@ def get_yesterday_str():
     yesterday = datetime.now() - timedelta(days=1)
     return yesterday.strftime("%Y-%m-%d")
 
+target_folder_skater = DOWNLOAD_DIR/'raw/skaters'
+target_folder_defender = DOWNLOAD_DIR/'raw/defenders'
+
 # ==========================================
 # 2. THE THREE TASK ENGINES
 # ==========================================
 
 
-def execute_zip_extractor():
+import pandas as pd
+
+def execute_skater_season():
     """Engine 1: Downloads a compressed zip for skaters and extracts it locally."""
     print(f"[{TODAY_STR}] Running Zip Extraction Utility...")
-    # Example placeholder behavior using 'zipfile' and 'os'
-    url = 'https://peter-tanner.com/moneypuck/downloads/seasonPlayersSummary/skaters/2026.zip'
-    target_folder = DOWNLOAD_DIR/'raw/skaters'
-    filename = '2026.zip'
-    zip_filepath = target_folder/filename
     
-    desired_extracted_name = "Season_hockeyskater.csv"
-
-    print("Downloading ZIP file...")
-    with requests.get(url, stream=True) as response:
-        response.raise_for_status()
-        with open(zip_filepath, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-
-    print("Download complete. Extracting file...")
-
-    # Extract the ZIP file
-    # Note: This assumes the ZIP contains exactly one file you want to rename.
-    with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
-        # Get the internal name of the file inside the ZIP archive
-        internal_file_name = zip_ref.namelist()[0] 
+    url = 'https://moneypuck.com/moneypuck/playerData/seasonSummary/2026/regular/skaters.csv'
+    final_destination_skater = target_folder_skater / "Season_hockeyskater.csv"
+    final_destination_defender = target_folder_defender / "Defender_hockeyskater.csv"
     
-        # Extract it to our target folder
-        zip_ref.extract(internal_file_name, path=target_folder)
-        extracted_file_path = target_folder / internal_file_name
+    print("Fetching live data from moneypuck...")
+    
+    df = pd.read_csv(url)
+    
+    # FIX 2: Filter to 'all' situations so we don't double-count events
+    df_all = df[df['situation'] == 'all']
 
-    # Handle the safe renaming with iteration (+1) logic
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
+    # Build the team defense metric
+    df_def = df_all.groupby('team').agg(
+        total_icetime=('icetime', 'sum'),
+        total_xga=('OnIce_A_xGoals', 'sum')
+    ).reset_index()
+    
+    df_def['team_xGA_per_60'] = df_def['total_xga'] / (df_def['total_icetime'] / 3600)
 
-    final_destination = target_folder / desired_extracted_name
-    counter = 1
+    league_avg = df_def["team_xGA_per_60"].mean()
+    df_def["leagueAvgXGAper60"] = league_avg
+    # Save both files
+    df.to_csv(final_destination_skater, index=False, encoding="utf-8")
+    
+    # Just save the 3 clean columns for the analyzer
+    df_def = df_def[['team', 'team_xGA_per_60','leagueAvgXGAper60']]
+    df_def.to_csv(final_destination_defender, index=False, encoding="utf-8")
 
-    # Loop to increment the filename if it already exists
-    while final_destination.exists():
-        final_destination = target_folder / f"{base_name}-{counter}{extension}"
-        counter += 1
-
-    # Perform the actual rename
-    extracted_file_path.rename(final_destination)
-    print(f"Success! File extracted and saved as: {final_destination.name}")
-
-    # Clean up (Optional: deletes the temporary downloaded ZIP file)
-    zip_filepath.unlink()
-    print("Temporary ZIP file cleaned up.")
+    print("Download complete")
 
 def execute_skater_career():
     """Engine 2: Downloads data and processes it using standard built-in csv."""
@@ -89,12 +78,8 @@ def execute_skater_career():
     start = 0
     limit= 100
 
-    
-    target_folder = DOWNLOAD_DIR/'raw/skaters'
     desired_extracted_name = "Career_hockeyskater.csv"
 
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
     
     all_df = []
 
@@ -116,12 +101,7 @@ def execute_skater_career():
     df['career_toi'] = df['timeOnIcePerGame']
     df = df[['playerId','career_shots_per_60','career_toi']]
     
-    final_destination = target_folder / desired_extracted_name
-    counter = 1
-    while final_destination.exists():
-                final_destination = target_folder / f"{base_name}_{counter}{extension}"
-                counter += 1   
-            #Save to CSV
+    final_destination = target_folder_skater / desired_extracted_name
     df.to_csv(final_destination, index=False, encoding="utf-8")
     print(f"Success! Saved {len(df)} players records into '{final_destination}'.")
 
@@ -151,12 +131,12 @@ def execute_today_schedule():
         away_team = game.get("awayTeam", {}).get("abbrev")
 
         rows.append({
-            'playerTeam': home_team,
+            'team': home_team,
             'home_or_away': 'home',
             'opponent': away_team,
         })
         rows.append({
-            'playerTeam': away_team,
+            'team': away_team,
             'home_or_away': 'away',
             'opponent': home_team,
         })
@@ -170,96 +150,6 @@ def execute_today_schedule():
     df.to_csv(full_path, index=False)
     print(f"Data saved successfully to: {full_path}")
 
-def execute_defensive_career():
-    """Engine 4: Downloads data and processes it using standard built-in csv."""
-    print(f"[{TODAY_STR}] Running Raw CSV Streams...")
-    # Example placeholder behavior using the native 'csv' module
-    
-    #--bigger sample https://api.nhle.com/stats/rest/en/team/realtime?isAggregate=true&isGame=false&sort=%5B%7B%22property%22:%22hits%22,%22direction%22:%22DESC%22%7D,%7B%22property%22:%22franchiseId%22,%22direction%22:%22ASC%22%7D%5D&start=0&limit=50&cayenneExp=gameTypeId=2%20and%20seasonId%3C=20262027%20and%20seasonId%3E=20252026
-    #--season https://api.nhle.com/stats/rest/en/team/realtime?isAggregate=false&isGame=false&sort=%5B%7B%22property%22:%22hits%22,%22direction%22:%22DESC%22%7D,%7B%22property%22:%22teamId%22,%22direction%22:%22ASC%22%7D%5D&start=0&limit=50&cayenneExp=gameTypeId=2%20and%20seasonId%3C=20262027%20and%20seasonId%3E=20262027
-
-
-    # 1. Target NHL Stats API URL
-    NHL_API_URL = "https://api.nhle.com/stats/rest/en/team/realtime?isAggregate=true&isGame=false&sort=%5B%7B%22property%22:%22hits%22,%22direction%22:%22DESC%22%7D,%7B%22property%22:%22franchiseId%22,%22direction%22:%22ASC%22%7D%5D&start=0&limit=50&cayenneExp=gameTypeId=2%20and%20seasonId%3C=20262027%20and%20seasonId%3E=20252026"
-    target_folder = DOWNLOAD_DIR/'raw/defenders'
-    desired_extracted_name = "Career_hockeyTeam_defensive.csv"
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
-
-
-    print("Fetching live data from NHL API...")
-    response = requests.get(NHL_API_URL)
-    response.raise_for_status()
-    
-    #Extract the nested list of player records
-    json_payload = response.json()
-    player_data = json_payload.get("data", [])  # Targets the 'data' key array
-    
-    if player_data:
-        #Convert directly to a structured DataFrame
-        dfA = pd.DataFrame(player_data)
-        dfB = pd.read_csv('../assets/allTeamNames.csv')
-        
-        
-        #Only needed section
-        dfA = dfA[['franchiseName','blockedShotsPer60']]
-        df = pd.merge(dfA, dfB, on='franchiseName', how='inner')
-        df = df[['blockedShotsPer60','playerTeam']]
-        df = df.rename(columns={'blockedShotsPer60':'careerblockedShotsPer60'})
-
-        final_destination = target_folder / desired_extracted_name
-        #Save to CSV
-        df.to_csv(final_destination, index=False, encoding="utf-8")
-        print(f"Success! Saved {len(df)} teams records into '{final_destination}'.")
-    else:
-        print("No player records found under the 'data' key.")
-
-
-
-
-
-def execute_defensive_season():
-    """Engine 5: Downloads data and processes it using standard built-in csv."""
-    print(f"[{TODAY_STR}] Running Raw CSV Streams...")
-    # Example placeholder behavior using the native 'csv' module
-    
-    #Target NHL Stats API URL
-    NHL_API_URL = "https://api.nhle.com/stats/rest/en/team/realtime?isAggregate=false&isGame=false&sort=%5B%7B%22property%22:%22hits%22,%22direction%22:%22DESC%22%7D,%7B%22property%22:%22teamId%22,%22direction%22:%22ASC%22%7D%5D&start=0&limit=50&cayenneExp=gameTypeId=2%20and%20seasonId%3C=20262027%20and%20seasonId%3E=20262027"
-    target_folder = DOWNLOAD_DIR/'raw/defenders'
-    desired_extracted_name = "Season_hockeyTeam_defensive.csv"
-    base_name = Path(desired_extracted_name).stem       # e.g., "final_report"
-    extension = Path(desired_extracted_name).suffix   # e.g., ".csv"
-    
-    
-    print("Fetching live data from NHL API...")
-    response = requests.get(NHL_API_URL)
-    response.raise_for_status()
-        
-    #Extract the nested list of player records
-    json_payload = response.json()
-    player_data = json_payload.get("data", [])  # Targets the 'data' key array
-        
-    if player_data:
-        #Convert directly to a structured DataFrame
-        dfA = pd.DataFrame(player_data)
-        dfB = pd.read_csv('../assets/allTeamNamesv2.csv')
-            
-            
-        #Only needed section
-        dfA = dfA[['teamFullName','blockedShotsPer60']]
-        df = pd.merge(dfA, dfB, on='teamFullName', how='inner')
-        #df = df[['blockedShotsPer60','playerTeam']]
-
-        league_avg = df["blockedShotsPer60"].mean()
-        df["leagueAvgBlockedShotsPer60"] = league_avg
-        df = df[['playerTeam','blockedShotsPer60','leagueAvgBlockedShotsPer60']]
-    
-        final_destination = target_folder / desired_extracted_name
-        #Save to CSV
-        df.to_csv(final_destination, index=False, encoding="utf-8")
-        print(f"Success! Saved {len(df)} teams records into '{final_destination}'.")
-    else:
-        print("No player records found under the 'data' key.")
     
 
 
@@ -275,7 +165,7 @@ if __name__ == "__main__":
     # Add your command line choice argument mapping directly to your functions
     parser.add_argument(
         "action",
-        choices=["skater-career", "skater-season", "gamenight", "defense-career",'defense-season', "all"],
+        choices=["skater-career", "skater-season", "gamenight", "all"],
         help=(
             "skaters-career : Download and map live NHL skaters career stats\n"
             "skaters-season : Download and map live NHL skaters season stats\n"
@@ -291,19 +181,12 @@ if __name__ == "__main__":
     if args.action == "skater-career":
         execute_skater_career()
     elif args.action == "skater-season":
-        execute_zip_extractor()
+        execute_skater_season()
     elif args.action == "gamenight":
         execute_today_schedule()
-    elif args.action == "defense-career":
-        execute_defensive_career()
-    elif args.action == 'defense-season' :
-        execute_defensive_season()
     
     elif args.action == "all":
         print("Executing comprehensive batch sequence...")
         execute_skater_career()
-        execute_zip_extractor()
+        execute_skater_season()
         execute_today_schedule()
-        execute_defensive_career()
-        execute_defensive_season()
-        

@@ -27,11 +27,11 @@ output_dir_built = Path('../data/playingToday')
 
 #careerfile path
 career_file_skater = pd.read_csv("../data/raw/skaters/Career_hockeyskater.csv")
-career_file_defender = pd.read_csv("../data/raw/defenders/Career_hockeyTeam_defensive.csv")
+
 
 #seasonfile path
 season_file_skater = pd.read_csv("../data/raw/skaters/Season_hockeyskater.csv")
-season_file_defender = pd.read_csv("../data/raw/defenders/Season_hockeyTeam_defensive.csv")
+season_file_defender = pd.read_csv("../data/raw/defenders/Defender_hockeyskater.csv")
 
 #get schedule
 schedulefile = f"../data/playingToday/games_{TODAY_STR}.csv"
@@ -51,7 +51,7 @@ def execute_trimskaters():
     #,'playerTeam' fenwick
     df = df[df['situation'] == 'all']
     df['games'] = 1   # each row = one game
-    df = df.groupby(['playerId','name','playerTeam'])[['games','icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
+    df = df.groupby(['playerId','name','team'])[['games','icetime','I_F_shotsOnGoal','I_F_missedShots']].sum().reset_index()
     df = df.copy()
 
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
@@ -72,17 +72,34 @@ def execute_trimskaters():
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
 
-def execute_trimdefenders():
-    df = season_file_defender
+def execute_trimcareer():
+    df = pd.read_csv('../assets/skaters.csv')
+    df = df[df['situation'] == 'all']
     
+    # Build the team defense metric
+    df = df.groupby('team').agg(
+            total_icetime=('icetime', 'sum'),
+            total_xga=('OnIce_A_xGoals', 'sum')
+        ).reset_index()
+
+    df['Career_team_xGA_per_60'] = df['total_xga'] / (df['total_icetime'] / 3600)
+    df = df[['team', 'Career_team_xGA_per_60']]
+
+    df.to_csv("../data/raw/defenders/C_Defender_hockeyskater.csv", index=False, encoding="utf-8")
+    
+
+def execute_trimdefenders():  
+    df = season_file_defender
+    career_file_defender = pd.read_csv("../data/raw/defenders/C_Defender_hockeyskater.csv")
+
     desired_extracted_name = "TrimmedSeason_hockeydefender.csv"
     
     #filtering the data to only include few stuff
     #,'playerTeam' fenwick
     
-    df = pd.merge(df, career_file_defender, on='playerTeam', how='inner')
-    df = df[['playerTeam','blockedShotsPer60','careerblockedShotsPer60','leagueAvgBlockedShotsPer60']]
+    df = pd.merge(df, career_file_defender, on='team', how='inner')
 
+    df = df.rename(columns={'team' : 'opponent'})
     final_destination = output_dir_defender / desired_extracted_name
     df.to_csv(final_destination, index=False)
 
@@ -96,11 +113,10 @@ def execute_commenceGameNight():
     #filtering the data to only include few stuff
     #,'playerTeam' fenwick
     
-    df = pd.merge(trimmed_file_skater, get_tonightGames, on='playerTeam', how='inner')
-    dfB = dfB.rename(columns={'playerTeam':'opponent'})
+    df = pd.merge(trimmed_file_skater, get_tonightGames, on='team', how='inner')
     df = pd.merge(df, dfB, on='opponent', how='inner')
 
-    df = df[['name','playerTeam','home_or_away','shots_per_60','fenwick_per_60','career_shots_per_60','opponent','blockedShotsPer60','careerblockedShotsPer60','leagueAvgBlockedShotsPer60','blendedavgtoimin']]
+    df = df[['playerId','name','team','home_or_away','shots_per_60','fenwick_per_60','career_shots_per_60','opponent','team_xGA_per_60','Career_team_xGA_per_60','leagueAvgXGAper60','blendedavgtoimin']]
 
     final_destination = output_dir_built / desired_extracted_name
 
@@ -119,9 +135,10 @@ def main():
     # Add your command line choice argument mapping directly to your functions
     parser.add_argument(
         "action",
-        choices=["trimS", "trimD", "gametime", "all"],
+        choices=["trimS", "trimCD", "trimD", "gametime", "all"],
         help=(
             "trimS   : trim skater file"
+            "trimCD   : trim defender file"
             "trimD   : trim defender file"
             "gametime : gamenight schedule"
             "all     : Execute all 3 jobs sequentially"
@@ -132,6 +149,8 @@ def main():
 
     if args.action == "trimS":
         execute_trimskaters()
+    elif args.action == "trimCD":
+        execute_trimcareer()
     elif args.action == "trimD":
         execute_trimdefenders()
     elif args.action == "gametime":

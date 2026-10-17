@@ -29,10 +29,10 @@ def execute_calculation():
     df = pd.read_csv(file)
     #blended = weight * current + (1-weight) * career
     df['playerweighted_shotsper60'] = (weight * df['shots_per_60']) + ((1-weight) * df['career_shots_per_60'])
-    df['opponentweighted_blockedshotsper60'] = (weight * df['blockedShotsPer60']) + ((1-weight)* df['careerblockedShotsPer60'])
-    df['opponent_factor'] = (df['leagueAvgBlockedShotsPer60']/df['opponentweighted_blockedshotsper60'])
+    df['opponent_weighted_XGA'] = (weight * df['team_xGA_per_60']) + ((1-weight)* df['Career_team_xGA_per_60'])
+    df['opponent_factor'] = (df['leagueAvgXGAper60']/df['opponent_weighted_XGA'])
     df['home_factor'] = np.where(df['home_or_away'] == 'home', 1.05, 0.97)
-    df = df[['name','playerTeam','playerweighted_shotsper60','opponent','opponent_factor','blendedavgtoimin','home_factor']]
+    df = df[['playerId','name','team','playerweighted_shotsper60','opponent','opponent_factor','blendedavgtoimin','home_factor']]
     df['expectedLambda'] = (df['playerweighted_shotsper60']*(df['blendedavgtoimin']/60)*df['opponent_factor']*df['home_factor'])
     for n in range(1, 6):
     # Explicitly using k and mu forces SciPy to map the variables correctly

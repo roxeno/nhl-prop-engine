@@ -19,8 +19,7 @@ def run_gametime():
     execute_skater_career()
     execute_zip_extractor()
     execute_today_schedule()
-    execute_defensive_career()
-    execute_defensive_season()
+
     
     # 2. Trim (Assuming these automatically find the newest raw files)
     print("Step 2: Trimming skaters & defenders...")
@@ -57,10 +56,10 @@ def main():
     # 4. Route execution
     if args.action == "gametime":
         run_gametime()
-    elif args.actions == "visualize":
+    elif args.action == "visualize":
         print("Running model...")
         show_top_n()
-        show_player_distribution()
+        show_top_5_distributions()
 
 
 
