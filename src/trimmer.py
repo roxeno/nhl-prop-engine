@@ -156,6 +156,7 @@ def main():
         execute_commenceGameNight()
     elif args.action == "all":
         print("Executing comprehensive batch sequence...")
+        execute_trimcareer()
         execute_trimskaters()
         execute_trimdefenders()
         execute_commenceGameNight()

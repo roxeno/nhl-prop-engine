@@ -17,12 +17,12 @@ def run_gametime():
     # 1. Scrape
     print("Step 1: Fetching schedule & team stats...")
     execute_skater_career()
-    execute_zip_extractor()
+    execute_skater_season()
     execute_today_schedule()
-
     
     # 2. Trim (Assuming these automatically find the newest raw files)
     print("Step 2: Trimming skaters & defenders...")
+    execute_trimcareer()
     execute_trimskaters()
     execute_trimdefenders()
     execute_commenceGameNight()
