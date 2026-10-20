@@ -6,12 +6,19 @@ from pathlib import Path
 
 DATA_PATH = "../data/built/readytouse.csv"
 df = pd.read_csv(DATA_PATH)
-def show_top_n():
-    """Horizontal bar chart of top players by expected lambda."""
-    # Sort so the highest lambda is at the top
-    df_top = df.sort_values("expectedLambda", ascending=False).head(25)
-    
-    # Reverse so Plotly plots the highest at the top of the y-axis
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import poisson
+import pandas as pd
+
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import poisson
+import pandas as pd
+
+def show_top_n(df, n=25):
+    """Horizontal bar chart of top players by expected lambda, showing goalie matchup."""
+    df_top = df.sort_values("expectedLambda", ascending=False).head(n)
     df_top = df_top.iloc[::-1]
 
     fig = px.bar(
@@ -21,13 +28,14 @@ def show_top_n():
         orientation="h",
         color="expectedLambda",
         color_continuous_scale="Blues",
-        title=f"Top 25 Expected Shots on Goal (Tonight)",
+        title=f"Top {n} Expected Shots on Goal (Tonight)",
         labels={"expectedLambda": "Expected Shots (λ)", "name": ""},
         hover_data={
             "opponent": True,
+            "sv_pct": ":.3f", 
+            "expectedLambda_hd": ":.2f", # <-- NEW: Shows High Danger Lambda
             "p_at_least_1": ":.1%",
             "p_at_least_2": ":.1%",
-            "expectedLambda": ":.2f",
             "name": False,
         }
     )
@@ -41,90 +49,143 @@ def show_top_n():
     
     fig.show()
 
-def show_top_5_distributions():
-    """
-    Creates an interactive chart showing the top 5 players' distributions.
-    """
-    # 1. Get the top 5 players by expectedLambda
+def show_top_5_distributions(df):
+    """Interactive chart showing the top 5 players' distributions."""
     top_5 = df.sort_values("expectedLambda", ascending=False).head(5)
-
-    # 2. Setup the figure
     fig = go.Figure()
     
-    # We extend the labels to 7, plus the 8+ bucket
     labels = ["0", "1", "2", "3", "4", "5", "6", "7", "8+"]
 
-    # 3. Add a trace (bar chart) for each player
     for _, row in top_5.iterrows():
         lam = row["expectedLambda"]
         name = row["name"]
         opp = row["opponent"]
+        sv = row["sv_pct"]
+        hd_lam = row["expectedLambda_hd"] # <-- NEW: Pull HD Lambda
         
-        # Calculate P(exactly k)
         probs = [poisson.pmf(k, lam) for k in range(8)]
-        # Calculate P(>= 5)
-        prob_8_plus = poisson.sf(7, lam)
-
-        probs.append(prob_8_plus)
+        probs.append(poisson.sf(7, lam)) 
         
         fig.add_trace(go.Bar(
-            name=f"{name} (vs {opp})",
+            name=f"{name} (vs {opp} - {sv:.3f} SV%)",
             x=labels,
             y=probs,
             text=[f"{p:.1%}" for p in probs],
             textposition="auto",
+            customdata=[[hd_lam]] * len(labels), # <-- NEW: Pass HD Lambda to hover
+            hovertemplate="%{x} shots: %{y:.1%}<br>HD Lambda: %{customdata[0]:.2f}<extra></extra>" # <-- NEW: Custom hover
         ))
 
-    # 4. Add dropdown menu to switch between players
-    # We create a list of buttons, one for each player
-    buttons = []
-    
-    # First button: Show all 5 at once
-    buttons.append(dict(
+    # Dropdown menu
+    buttons = [dict(
         label="All Top 5",
         method="update",
         args=[{"visible": [True, True, True, True, True]},
               {"title": "Top 5 Players - Shot Distributions"}]
-    ))
+    )]
 
-    # Individual player buttons
     for i, (_, row) in enumerate(top_5.iterrows()):
         visibility = [False] * 5
-        visibility[i] = True # Only show this player
+        visibility[i] = True 
         
         buttons.append(dict(
             label=f"{row['name']}",
             method="update",
             args=[{"visible": visibility},
-                  {"title": f"{row['name']} vs {row['opponent']} — λ = {row['expectedLambda']:.2f}"}]
+                  {"title": f"{row['name']} vs {row['opponent']} ({row['sv_pct']:.3f} SV%) — λ = {row['expectedLambda']:.2f} (HD: {row['expectedLambda_hd']:.2f})"}]
         ))
 
-    # 5. Update layout with the dropdown
     fig.update_layout(
-        updatemenus=[
-            dict(
-                active=0,
-                buttons=buttons,
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.0,
-                xanchor="left",
-                y=1.15,
-                yanchor="top"
-            ),
-        ],
+        updatemenus=[dict(
+            active=0, buttons=buttons, direction="down",
+            pad={"r": 10, "t": 10}, showactive=True,
+            x=0.0, xanchor="left", y=1.15, yanchor="top"
+        )],
         title="Top 5 Players - Shot Distributions",
         xaxis_title="Shots on Goal",
         yaxis_title="Probability",
         yaxis=dict(tickformat=".0%"),
-        barmode="group", # Puts bars side-by-side when "All" is selected
+        barmode="group",
         height=600,
     )
 
     fig.show()
 
-def show_player_distribution(player_name: str):
+def show_pp_impact(df, n=20):
+    """Compares 5v5 Expected Shots vs Power Play Expected Shots."""
+    df_top = df.sort_values("expectedLambda", ascending=False).head(n)
+    df_top = df_top.iloc[::-1] 
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        y=df_top['name'],
+        x=df_top['lambda_5v5'],
+        name='5v5 Expected Shots',
+        orientation='h',
+        marker=dict(color='#1f77b4') 
+    ))
+
+    fig.add_trace(go.Bar(
+        y=df_top['name'],
+        x=df_top['lambda_pp'],
+        name='PP Expected Shots',
+        orientation='h',
+        marker=dict(color='#ff7f0e') 
+    ))
+
+    fig.update_layout(
+        barmode='stack', 
+        title=f"Top {n} Players: 5v5 vs Power Play Expected Shots (λ)",
+        xaxis_title="Expected Shots",
+        yaxis_title="",
+        height=800,
+        margin=dict(l=150, r=20, t=50, b=50),
+        legend=dict(x=0.7, y=1.1, orientation="h")
+    )
+
+    fig.show()
+
+def show_hd_shot_impact(df, n=40):
+    """Scatter plot comparing Total Expected Shots vs High-Danger Expected Shots."""
+    df_top = df.sort_values("expectedLambda", ascending=False).head(n)
+
+    fig = px.scatter(
+        df_top,
+        x="expectedLambda",
+        y="expectedLambda_hd",
+        text="name",
+        color="expectedLambda_hd",
+        color_continuous_scale="Reds",
+        size="expectedLambda", 
+        hover_data={
+            "name": True,
+            "opponent": True,
+            "sv_pct": ":.3f",
+            "expectedLambda": ":.2f",
+            "expectedLambda_hd": ":.2f",
+        },
+        title=f"Top {n} Players: Total Volume vs. High-Danger Shots"
+    )
+
+    fig.update_traces(
+        textposition="top center",
+        marker=dict(line=dict(width=1, color='DarkSlateGrey'))
+    )
+
+    fig.add_hline(y=df_top['expectedLambda_hd'].median(), line_dash="dash", line_color="gray", opacity=0.5)
+    fig.add_vline(x=df_top['expectedLambda'].median(), line_dash="dash", line_color="gray", opacity=0.5)
+
+    fig.update_layout(
+        xaxis_title="Expected Total Shots (λ)",
+        yaxis_title="Expected High-Danger Shots (λ)",
+        height=700,
+        margin=dict(t=50, b=50, l=50, r=50)
+    )
+
+    fig.show()
+
+def show_player_distribution(df, player_name: str):
     """Vertical bar chart of P(exactly k shots) for a single player."""
     row = df[df["name"] == player_name]
     
@@ -135,19 +196,18 @@ def show_player_distribution(player_name: str):
     row = row.iloc[0]
     lam = row["expectedLambda"]
     opp = row["opponent"]
+    sv = row["sv_pct"]
+    hd_lam = row["expectedLambda_hd"]
     
-    # Calculate exactly P(X = k) for k=0 to 4
     probs = [poisson.pmf(k, lam) for k in range(5)]
-    # Calculate P(X >= 5)
-    prob_5_plus = 1 - sum(probs)
+    prob_5_plus = poisson.sf(4, lam) 
     probs.append(prob_5_plus)
     
     labels = ["0", "1", "2", "3", "4", "5+"]
     
-    # Color the "most likely" bar differently
     max_idx = probs.index(max(probs))
     colors = ["#636EFA"] * 6
-    colors[max_idx] = "#EF553B" # Highlight the most likely outcome
+    colors[max_idx] = "#EF553B" 
 
     fig = go.Figure(data=[
         go.Bar(
@@ -160,7 +220,7 @@ def show_player_distribution(player_name: str):
     ])
 
     fig.update_layout(
-        title=f"{player_name} vs {opp} — λ = {lam:.2f}",
+        title=f"{player_name} vs {opp} ({sv:.3f} SV%) — λ = {lam:.2f} (HD: {hd_lam:.2f})",
         xaxis_title="Shots on Goal",
         yaxis_title="Probability",
         yaxis=dict(tickformat=".0%"),
@@ -171,16 +231,19 @@ def show_player_distribution(player_name: str):
 
 def main():
     # Load the data
-    df = pd.read_csv(DATA_PATH)
 
     # Show the board
-    show_top_n()
+    show_top_n(df,25)
 
     # Show the interactive Top 5 chart
-    show_top_5_distributions()
+    show_top_5_distributions(df)
 
+    #Show pp impact
+    show_pp_impact(df,20)
     # Show a specific player's distribution
     # show_player_distribution("Nathan MacKinnon", df)
+
+    show_hd_shot_impact(df,40)
 
 if __name__ == "__main__":
     main()

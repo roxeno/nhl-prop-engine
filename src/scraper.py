@@ -105,6 +105,52 @@ def execute_skater_career():
     df.to_csv(final_destination, index=False, encoding="utf-8")
     print(f"Success! Saved {len(df)} players records into '{final_destination}'.")
 
+def execute_today_goalie():
+    url = "https://www.dailyfaceoff.com/_next/data/JwMc7WvFWriiITA6mVncN/starting-goalies.json"
+    target_directory = DOWNLOAD_DIR/ 'playingToday'
+    filename = f'goalie_{TODAY_STR}.csv'
+    file_to_delete = target_directory / f"goalie_{get_yesterday_str}.csv"
+    full_path = os.path.join(target_directory, filename)
+    #1. Fetch the data
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        json_data = response.json()
+    except Exception as e:
+        print(f"❌ Failed to fetch goalie data: {e}")
+        return
+    
+    games = json_data.get("pageProps", {}).get("data", [])
+
+    goalie_data = []
+    for game in games:
+            # We append TWO rows per game: one for the home team, one for the away team
+            goalie_data.append({
+                "franchiseName": game.get("homeTeamName"),
+                "goalie": game.get("homeGoalieName"),
+                "sv_pct": float(game.get("homeGoalieSavePercentage", 0.900))
+            })
+            goalie_data.append({
+                "franchiseName": game.get("awayTeamName"),
+                "goalie": game.get("awayGoalieName"),
+                "sv_pct": float(game.get("awayGoalieSavePercentage", 0.900))
+            })
+    if file_to_delete.exists():
+        os.remove(file_to_delete)
+        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
+    else:
+        print(f"✅ No schedule found to delete for {get_yesterday_str}.")
+    df = pd.DataFrame(goalie_data)
+    teamfilenames = pd.read_csv("../assets/allTeamNames.csv")
+    df = pd.merge(df,teamfilenames,on="franchiseName",how="inner")
+    df = df.rename(columns={'playerTeam' : 'team'})
+    df = df[['team','goalie','sv_pct']]
+    df.to_csv(full_path, index=False)
+    print(f"Data saved successfully to: {full_path}")
     
 
 
@@ -165,10 +211,11 @@ if __name__ == "__main__":
     # Add your command line choice argument mapping directly to your functions
     parser.add_argument(
         "action",
-        choices=["skater-career", "skater-season", "gamenight", "all"],
+        choices=["skater-career", "skater-season","goalie-game", "gamenight", "all"],
         help=(
             "skaters-career : Download and map live NHL skaters career stats\n"
             "skaters-season : Download and map live NHL skaters season stats\n"
+            "goalie-game : Get today's starting goalie\n"
             "gamenight : Download today's games\n"
             "defense-career  : Download defense career stats\n"
             "defense-season  : Download defense season stats\n"
@@ -182,6 +229,8 @@ if __name__ == "__main__":
         execute_skater_career()
     elif args.action == "skater-season":
         execute_skater_season()
+    elif args.action =="goalie-game":
+        execute_today_goalie()
     elif args.action == "gamenight":
         execute_today_schedule()
     
