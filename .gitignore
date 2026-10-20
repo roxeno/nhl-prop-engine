@@ -15,6 +15,9 @@ data/raw/
 data/trimmedDefenders/
 data/trimmedSkaters/
 
+# src file
+src/pea.py
+
 # OS
 .DS_Store
 Thumbs.db

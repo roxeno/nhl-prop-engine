@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 from scipy.stats import poisson
 import pandas as pd
 
-def show_top_n(df, n=25):
+def get_top_n_fig(df, n=25):
     """Horizontal bar chart of top players by expected lambda, showing goalie matchup."""
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
     df_top = df_top.iloc[::-1]
@@ -47,11 +47,11 @@ def show_top_n(df, n=25):
         coloraxis_showscale=False,
     )
     
-    fig.show()
+    return fig
 
-def show_top_5_distributions(df):
+def get_top_5_distributions(df, n=5):
     """Interactive chart showing the top 5 players' distributions."""
-    top_5 = df.sort_values("expectedLambda", ascending=False).head(5)
+    top_5 = df.sort_values("expectedLambda", ascending=False).head(n)
     fig = go.Figure()
     
     labels = ["0", "1", "2", "3", "4", "5", "6", "7", "8+"]
@@ -109,9 +109,9 @@ def show_top_5_distributions(df):
         height=600,
     )
 
-    fig.show()
+    return fig
 
-def show_pp_impact(df, n=20):
+def get_pp_impact_fig(df, n=20):
     """Compares 5v5 Expected Shots vs Power Play Expected Shots."""
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
     df_top = df_top.iloc[::-1] 
@@ -144,9 +144,9 @@ def show_pp_impact(df, n=20):
         legend=dict(x=0.7, y=1.1, orientation="h")
     )
 
-    fig.show()
+    return fig
 
-def show_hd_shot_impact(df, n=40):
+def get_hd_impact_fig(df, n=40):
     """Scatter plot comparing Total Expected Shots vs High-Danger Expected Shots."""
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
 
@@ -183,7 +183,7 @@ def show_hd_shot_impact(df, n=40):
         margin=dict(t=50, b=50, l=50, r=50)
     )
 
-    fig.show()
+    return fig
 
 def show_player_distribution(df, player_name: str):
     """Vertical bar chart of P(exactly k shots) for a single player."""
@@ -227,23 +227,4 @@ def show_player_distribution(df, player_name: str):
         height=500,
     )
 
-    fig.show()
-
-def main():
-    # Load the data
-
-    # Show the board
-    show_top_n(df,25)
-
-    # Show the interactive Top 5 chart
-    show_top_5_distributions(df)
-
-    #Show pp impact
-    show_pp_impact(df,20)
-    # Show a specific player's distribution
-    # show_player_distribution("Nathan MacKinnon", df)
-
-    show_hd_shot_impact(df,40)
-
-if __name__ == "__main__":
-    main()
+    return fig
