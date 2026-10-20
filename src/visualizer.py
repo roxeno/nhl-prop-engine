@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from scipy.stats import poisson
 import pandas as pd
 
+
 def get_top_n_fig(df, n=25):
     """Horizontal bar chart of top players by expected lambda, showing goalie matchup."""
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
@@ -40,8 +41,11 @@ def get_top_n_fig(df, n=25):
 
     fig.update_layout(
         height=800,
-        yaxis=dict(tickmode="linear"),
-        margin=dict(l=150, r=20, t=50, b=50),
+        yaxis=dict(
+            tickmode="linear",
+            tickfont=dict(size=10) # <-- Make names readable on mobile
+        ),
+        margin=dict(l=100, r=20, t=50, b=50), # Reduce left margin
         coloraxis_showscale=False,
     )
     
