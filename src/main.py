@@ -41,6 +41,7 @@ def run_dashboard():
     fig1 = get_top_n_fig(df)
     fig2 = get_pp_impact_fig(df)
     fig3 = get_hd_impact_fig(df)
+    fig4 = get_goal_scorers_fig(df)
     
     output_path = "../data/built/dashboard.html"
     with open(output_path, "w") as f:
@@ -53,6 +54,8 @@ def run_dashboard():
         f.write("<h2>High-Danger vs Total Volume</h2>")
         f.write(fig3.to_html(full_html=False, include_plotlyjs=False))
         f.write("</body></html>")
+        f.write("<h2 style='margin-left: 20px;'>Anytime Goal Scorer (ATG) Probabilities</h2>")
+        f.write(fig4.to_html(full_html=False, include_plotlyjs=False))
     print(f"✅ Dashboard saved to {output_path}!")
 
 

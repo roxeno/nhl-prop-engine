@@ -107,6 +107,15 @@ def execute_calculation():
     df['hd_ratio'] = df['hd_ratio'].clip(upper=0.50)
     df['expectedLambda_hd'] = df['expectedLambda'] * df['hd_ratio']
 
+    # Conservative conversion rate for High-Danger shots
+    HD_CONVERSION_RATE = 0.15
+
+    # Calculate Expected Goals
+    df['expectedGoals'] = df['expectedLambda_hd'] * HD_CONVERSION_RATE
+
+    # Probability of scoring 1+ goals
+    df['p_at_least_1_goal'] = df['expectedGoals'].apply(lambda lam: poisson.sf(k=0, mu=lam))
+
     # High Danger shots are rare, so we only calculate up to 3.
     for n in range(1, 4):
         df[f'p_hd_at_least_{n}'] = df['expectedLambda_hd'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
@@ -124,7 +133,7 @@ def execute_calculation():
                   'p_at_least_1', 'p_at_least_2', 'p_at_least_3', 'p_at_least_4', 'p_at_least_5',
                   'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3',
                   'playerweighted_shotsper60', 'hd_ratio', 'blendedavgtoimin','sv_pct','player_team_b2b', 'opponent_b2b',
-                  'fatigue_multiplier','manual_override']
+                  'fatigue_multiplier','manual_override', 'expectedGoals','p_at_least_1_goal']
     
     df[final_cols].to_csv(final_destination, index=False)
     shutil.copy(final_destination, cachefile)

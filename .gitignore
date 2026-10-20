@@ -17,6 +17,7 @@ data/trimmedSkaters/
 
 # src file
 src/pea.py
+src/bean.py
 
 # OS
 .DS_Store
