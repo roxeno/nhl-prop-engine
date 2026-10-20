@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from src.visualizer import get_top_n_fig, get_pp_impact_fig, get_hd_impact_fig, get_goal_scorers_fig
+from src.visualizer import *
 
 st.set_page_config(page_title="NHL Prop Engine", page_icon="🏒", layout="wide")
 
