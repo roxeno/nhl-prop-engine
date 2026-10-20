@@ -34,6 +34,30 @@ def get_top_n_fig(df, n=25):
     )
     return fig
 
+def get_pp_impact_fig(df, n=20):
+    df_top = df.sort_values("expectedLambda", ascending=False).head(n)
+    df_top = df_top.iloc[::-1] 
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=df_top['name'], x=df_top['lambda_5v5'],
+        name='5v5', orientation='h', marker=dict(color='#1f77b4') 
+    ))
+    fig.add_trace(go.Bar(
+        y=df_top['name'], x=df_top['lambda_pp'],
+        name='Power Play', orientation='h', marker=dict(color='#ff7f0e') 
+    ))
+
+    fig.update_layout(
+        barmode='stack', 
+        title=f"Top {n}: 5v5 vs PP",
+        xaxis_title="Expected Shots",
+        height=380,
+        margin=dict(l=100, r=20, t=50, b=50),
+        legend=dict(x=0.5, y=1.1, orientation="h")
+    )
+    return fig
+
 def get_hd_impact_fig(df, n=40):
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
 
