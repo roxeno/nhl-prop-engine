@@ -3,28 +3,39 @@ import os
 import streamlit as st
 import pandas as pd
 
-# Ensure Python finds the src folder
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.visualizer import get_top_n_fig, get_pp_impact_fig, get_hd_impact_fig
 
-# 1. Layout Config (Wide for desktop, auto-stacks for mobile)
-st.set_page_config(
-    page_title="NHL Prop Engine", 
-    page_icon="🏒", 
-    layout="wide" 
-)
+st.set_page_config(page_title="NHL Prop Engine", page_icon="🏒", layout="wide")
 
-# Custom CSS for clean UI
+# Custom CSS for the Hero Banner
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem; }
-    h1 { font-size: 2.5rem !important; }
+    .hero-banner {
+        background-color: #1e1e1e;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+        border: 1px solid #333;
+    }
+    .hero-text {
+        color: #e0e0e0;
+        font-size: 1.2rem;
+        margin: 0;
+    }
+    .hero-name {
+        color: #ff4b4b; /* Streamlit red */
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 5px 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🏒 NHL Prop Engine")
 
-# 2. Load Data (Absolute path)
+# Load Data
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "data", "built", "readytouse.csv")
 
@@ -34,19 +45,45 @@ except FileNotFoundError:
     st.error(f"Data not found at {CSV_PATH}. Run the pipeline first.")
     st.stop()
 
-# 3. Top Metrics Row
+# --- THE HERO BANNER ---
+# Find the player with the highest High-Danger Lambda (Most Dangerous)
+most_dangerous = df.sort_values("expectedLambda_hd", ascending=False).iloc[0]
+
+st.markdown(f"""
+    <div class="hero-banner">
+        <p class="hero-text">🚨 Most Dangerous Player Tonight 🚨</p>
+        <p class="hero-name">{most_dangerous['name']}</p>
+        <p class="hero-text">vs {most_dangerous['opponent']} (Goalie SV%: {most_dangerous['sv_pct']:.3f})</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# --- THE METRICS ROW ---
+# We'll keep the three metrics, but base them on the top overall volume player
 top_player = df.sort_values("expectedLambda", ascending=False).iloc[0]
 col1, col2, col3 = st.columns(3)
+
 with col1:
-    st.metric(label="Top λ", value=f"{top_player['expectedLambda']:.2f}", help=f"{top_player['name']}")
+    st.metric(
+        label="Top Volume (λ)", 
+        value=f"{top_player['expectedLambda']:.2f}", 
+        help=f"{top_player['name']}"
+    )
 with col2:
-    st.metric(label="Top HD λ", value=f"{top_player['expectedLambda_hd']:.2f}", help="High Danger Expected Shots")
+    st.metric(
+        label="Top HD Volume (λ)", 
+        value=f"{top_player['expectedLambda_hd']:.2f}", 
+        help=f"{most_dangerous['name']}"
+    )
 with col3:
-    st.metric(label="Players", value=len(df), help="Total players playing tonight")
+    st.metric(
+        label="Total Players", 
+        value=len(df), 
+        help="Players playing tonight"
+    )
 
 st.divider()
 
-# 4. Desktop Grid Layout (Auto-stacks on mobile)
+# --- CHARTS ---
 col_left, col_right = st.columns([1.2, 1])
 
 with col_left:
@@ -63,10 +100,10 @@ with col_right:
 
     st.markdown("### 🎯 High Danger vs Volume")
     fig3 = get_hd_impact_fig(df, n=40)
-    fig3.update_layout(height=380)
+    fig3.update_layout(height=450)
     st.plotly_chart(fig3, use_container_width=True)
 
-# 5. Raw Data Table
+# --- RAW DATA ---
 st.divider()
 with st.expander("📋 View Raw Data Table"):
     display_cols = ['name', 'team', 'opponent', 'expectedLambda', 'expectedLambda_hd', 'sv_pct']
