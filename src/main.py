@@ -18,29 +18,28 @@ def run_gametime():
     print("Step 1: Fetching schedule & team stats...")
     execute_skater_career()
     execute_skater_season()
+    execute_today_goalie()
     execute_today_schedule()
     
     # 2. Trim (Assuming these automatically find the newest raw files)
     print("Step 2: Trimming skaters & defenders...")
     execute_trimcareer()
     execute_trimskaters()
-    execute_trimdefenders()
+    execute_opponent()
     execute_commenceGameNight()
     
     # 3. Analyze
     print("Step 3: Calculating probabilities...")
     execute_calculation()
 
-    
-    
     print("\n✅ GameTime Complete! readytouse.csv is ready.")
 
 
 def main():
     # 1. Setup the parser
     parser = argparse.ArgumentParser(
-        prog="python -m src.main",
-        description="NHL XGL Automated Pipeline"
+    prog="python -m src.main",
+    description="NHL Player Prop Quant Engine" 
     )
     
     # 2. Add ONLY the action argument
@@ -58,8 +57,20 @@ def main():
         run_gametime()
     elif args.action == "visualize":
         print("Running model...")
-        show_top_n()
-        show_top_5_distributions()
+         # Load the data
+        
+        # Show the board
+        show_top_n(df,25)
+        
+        # Show the interactive Top 5 chart
+        show_top_5_distributions(df)
+        
+        #Show pp impact
+        show_pp_impact(df,20)
+        # Show a specific player's distribution
+        # show_player_distribution("Nathan MacKinnon", df)
+        
+        show_hd_shot_impact(df,40)
 
 
 
