@@ -1,21 +1,24 @@
 from datetime import date
 from pathlib import Path
-
+from scraper import get_yesterday_str,get_b2b_teams_from_storage
 import pandas as pd
 import numpy as np
 
 import argparse
 import sys
+import os
 
 # ==========================================
 # 1. GLOBAL CONSTANTS & FILE SETUP
 # ==========================================
 
-#../data/raw/skaters/filename
-filename = sys.argv[1]
 
 #today date
 TODAY_STR = date.today().strftime("%Y-%m-%d")
+YESTERDAY_STR = get_yesterday_str()
+
+#Directory
+target_directory = Path("../data/playingToday")
 
 #K tuning ; Tuning based on gamesplayed; Early season trust career; Late season trust season stats
 K = 10  # shrinkage constant; higher = trust career more
@@ -38,13 +41,15 @@ season_file_defender = pd.read_csv("../data/raw/defenders/Defender_hockeyskater.
 goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
 
 #get schedule
-schedulefile = f"../data/playingToday/games_{TODAY_STR}.csv"
-get_tonightGames = pd.read_csv(schedulefile)
+get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
+get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
     
 
 # ==========================================
 # 2. THE THREE TASK ENGINES
 # ==========================================
+
+
 
 def execute_trimskaters():
     df = season_file_skater
@@ -135,6 +140,10 @@ def execute_opponent():
     df.to_csv(final_destination, index=False)
 
 def execute_commenceGameNight():
+    #load yesterday game schedule
+    file_to_delete = target_directory / f"games_{YESTERDAY_STR}.csv"
+    b2b_teams = get_yesterdayGame
+
     # Load trimmed data
     trimmed_file_skater = pd.read_csv('../data/trimmedSkaters/TrimmedSeason_hockeyskater.csv')
     trimmed_file_defender = pd.read_csv('../data/trimmedDefenders/TrimmedSeason_hockeydefender.csv')
@@ -148,15 +157,27 @@ def execute_commenceGameNight():
     # 2. Merge with Opponent Defensive Stats
     df = pd.merge(df, dfB, on='opponent', how='inner')
 
-    # 3. Keep ONLY the necessary columns
+    #3.
+    b2b_teams = get_b2b_teams_from_storage()
+    # Create boolean flags (1 if true, 0 if false)
+    df['player_team_b2b'] = df['team'].isin(b2b_teams).astype(int)
+    df['opponent_b2b'] = df['opponent'].isin(b2b_teams).astype(int)
+    
+    # 4. Keep ONLY the necessary columns
     # INCLUDING the new 5on4 PP columns we just built!
     df = df[[
         'playerId', 'name', 'team', 'home_or_away', 'opponent',
         'shots_per_60', 'hd_ratio', 'fenwick_per_60', 'career_shots_per_60', 
         '5on4_shots_per_60', '5on4_hd_ratio' ,'5on4_avg_toi_min', 
         'team_xGA_per_60', 'Career_team_xGA_per_60', 'leagueAvgXGAper60', 'sv_pct',
-        'blendedavgtoimin'
+        'blendedavgtoimin','player_team_b2b', 'opponent_b2b'
     ]]
+    """if file_to_delete.exists():
+        os.remove(file_to_delete)
+        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
+    else:
+        print(f"✅ No schedule found to delete for {YESTERDAY_STR}.")"""
+
 
     final_destination = output_dir_built / desired_extracted_name
     df.to_csv(final_destination, index=False)

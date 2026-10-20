@@ -1,4 +1,5 @@
 from scipy.stats import poisson
+from lineup_override import LINEUP_OVERRIDES
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
@@ -71,6 +72,28 @@ def execute_calculation():
     df['lambda_5v5'] = lambda_5v5 * df['home_factor'] * df['goalie_factor']
     df['lambda_pp'] = lambda_pp * df['home_factor'] * df['goalie_factor']
     df['expectedLambda'] = df['lambda_5v5'] + df['lambda_pp']
+
+    # ==========================================
+    # 🚨 NEW: BACK-TO-BACK FATIGUE MULTIPLIER
+    # ==========================================
+    df['fatigue_multiplier'] = 1.0
+
+    # If the player's team played yesterday, they shoot 5% less
+    df.loc[df['player_team_b2b'] == 1, 'fatigue_multiplier'] *= 0.95
+    
+    # If the opponent played yesterday, their defense is tired (allows 5% more)
+    df.loc[df['opponent_b2b'] == 1, 'fatigue_multiplier'] *= 1.05
+
+     # Apply it to the Total Lambda
+    df['expectedLambda'] = df['expectedLambda'] * df['fatigue_multiplier']
+
+    df['manual_override'] = df['name'].map(LINEUP_OVERRIDES).fillna(1.0)
+
+    # Apply the override to the total lambda
+    df['expectedLambda'] = df['expectedLambda'] * df['manual_override']
+    
+    # Apply it to the High-Danger Lambda too!
+    df['expectedLambda_hd'] = (df['expectedLambda'] * df['hd_ratio']) * df['fatigue_multiplier']* df['manual_override']
     
     for n in range(1, 6):
         df[f'p_at_least_{n}'] = df['expectedLambda'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
@@ -95,10 +118,11 @@ def execute_calculation():
     
     final_cols = ['playerId', 'name', 'team', 'opponent', 
                   'expectedLambda', 'lambda_5v5', 'lambda_pp', 
-                  'expectedLambda_hd', # <-- NEW HD COLUMN
+                  'expectedLambda_hd',
                   'p_at_least_1', 'p_at_least_2', 'p_at_least_3', 'p_at_least_4', 'p_at_least_5',
-                  'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3', # <-- NEW HD PROBABILITIES
-                  'playerweighted_shotsper60', 'hd_ratio', 'blendedavgtoimin','sv_pct']
+                  'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3',
+                  'playerweighted_shotsper60', 'hd_ratio', 'blendedavgtoimin','sv_pct','player_team_b2b', 'opponent_b2b',
+                  'fatigue_multiplier','manual_override']
     
     df[final_cols].to_csv(final_destination, index=False)
     shutil.copy(final_destination, cachefile)

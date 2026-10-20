@@ -25,6 +25,9 @@ def get_yesterday_str():
     yesterday = datetime.now() - timedelta(days=1)
     return yesterday.strftime("%Y-%m-%d")
 
+yesterday_str = get_yesterday_str()
+
+
 target_folder_skater = DOWNLOAD_DIR/'raw/skaters'
 target_folder_defender = DOWNLOAD_DIR/'raw/defenders'
 
@@ -34,6 +37,27 @@ target_folder_defender = DOWNLOAD_DIR/'raw/defenders'
 
 
 import pandas as pd
+def get_b2b_teams_from_storage():
+    """Reads yesterday's local CSV to find teams on a back-to-back."""
+    yesterday_str = get_yesterday_str()
+    target_directory = DOWNLOAD_DIR / 'playingToday'
+    yesterday_file = target_directory / f"games_{yesterday_str}.csv"
+    
+    # If yesterday's file exists, read it
+    if yesterday_file.exists():
+        try:
+            df = pd.read_csv(yesterday_file)
+            # The 'team' column in your file holds the team abbreviations
+            b2b_teams = df['team'].unique().tolist()
+            print(f"✅ Loaded B2B teams from local storage: {b2b_teams}")
+            return b2b_teams
+        except Exception as e:
+            print(f"⚠️ Error reading yesterday's file: {e}")
+            return []
+    else:
+        print(f"✅ No games yesterday (file {yesterday_file.name} not found).")
+        return []
+
 
 def execute_skater_season():
     """Engine 1: Downloads a compressed zip for skaters and extracts it locally."""
@@ -107,9 +131,9 @@ def execute_skater_career():
 
 def execute_today_goalie():
     url = "https://www.dailyfaceoff.com/_next/data/JwMc7WvFWriiITA6mVncN/starting-goalies.json"
-    target_directory = DOWNLOAD_DIR/ 'playingToday'
+    target_directory = DOWNLOAD_DIR/'playingToday'
     filename = f'goalie_{TODAY_STR}.csv'
-    file_to_delete = target_directory / f"goalie_{get_yesterday_str}.csv"
+    file_to_delete = target_directory / f"goalie_{yesterday_str}.csv"
     full_path = os.path.join(target_directory, filename)
     #1. Fetch the data
     headers = {
@@ -141,7 +165,7 @@ def execute_today_goalie():
             })
     if file_to_delete.exists():
         os.remove(file_to_delete)
-        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
+        print(f"🗑️ Deleted old goalie starter: {file_to_delete.name}")
     else:
         print(f"✅ No schedule found to delete for {get_yesterday_str}.")
     df = pd.DataFrame(goalie_data)
@@ -157,11 +181,10 @@ def execute_today_goalie():
 def execute_today_schedule():
     """Engine 3: Downloads and flattens NHL schedule json into a CSV."""
     print(f"[{TODAY_STR}] Running NHL schedule Export...")
-    yesterday_str = get_yesterday_str()
     url = f"https://api-web.nhle.com/v1/schedule/{TODAY_STR}"
     target_directory = DOWNLOAD_DIR/ 'playingToday'
     file_name = f'games_{TODAY_STR}.csv'
-    file_to_delete = target_directory / f"games_{yesterday_str}.csv"
+    #file_to_delete = target_directory / f"games_{yesterday_str}.csv"
     full_path = os.path.join(target_directory, file_name)
     
     response = requests.get(url, timeout=15).json()
@@ -187,11 +210,7 @@ def execute_today_schedule():
             'opponent': home_team,
         })
     
-    if file_to_delete.exists():
-        os.remove(file_to_delete)
-        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
-    else:
-        print(f"✅ No schedule found to delete for {yesterday_str}.")
+
     df = pd.DataFrame(rows)
     df.to_csv(full_path, index=False)
     print(f"Data saved successfully to: {full_path}")
@@ -238,4 +257,5 @@ if __name__ == "__main__":
         print("Executing comprehensive batch sequence...")
         execute_skater_career()
         execute_skater_season()
+        execute_today_goalie()
         execute_today_schedule()
