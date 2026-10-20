@@ -62,31 +62,20 @@ def get_hd_impact_fig(df, n=40):
     df_top = df.sort_values("expectedLambda", ascending=False).head(n)
 
     fig = px.scatter(
-        df_top, 
-        x="expectedLambda", 
-        y="expectedLambda_hd", 
-        text="name",
-        color="expectedLambda_hd", 
-        color_continuous_scale="Reds",
+        df_top, x="expectedLambda", y="expectedLambda_hd", text="name",
+        color="expectedLambda_hd", color_continuous_scale="Reds",
         size="expectedLambda", 
         hover_data={
-            "name": True, 
-            "opponent": True, 
-            "sv_pct": ":.3f",
-            "expectedLambda": ":.2f", 
-            "expectedLambda_hd": ":.2f",
+            "name": True, "opponent": True, "sv_pct": ":.3f",
+            "expectedLambda": ":.2f", "expectedLambda_hd": ":.2f",
         },
-        title=f"Top {n}: Volume vs High-Danger",
-        trendline="ols" # <-- Adds a nice trendline showing the correlation
+        title=f"Top {n}: Volume vs High-Danger"
     )
 
     fig.update_traces(
         textposition="top center",
-        marker=dict(line=dict(width=1, color='DarkSlateGrey')),
-        selector=dict(mode='markers+text') # Only applies to the scatter points, not the trendline
+        marker=dict(line=dict(width=1, color='DarkSlateGrey'))
     )
-
-    # Add crosshairs
     fig.add_hline(y=df_top['expectedLambda_hd'].median(), line_dash="dash", line_color="gray", opacity=0.5)
     fig.add_vline(x=df_top['expectedLambda'].median(), line_dash="dash", line_color="gray", opacity=0.5)
 
@@ -94,9 +83,6 @@ def get_hd_impact_fig(df, n=40):
         xaxis_title="Expected Total Shots (λ)",
         yaxis_title="Expected High-Danger Shots (λ)",
         height=380,
-        margin=dict(l=50, r=20, t=50, b=50),
-        yaxis=dict(range=[0, df_top['expectedLambda_hd'].max() * 1.1]), # <-- Force Y axis to start at 0
-        xaxis=dict(range=[df_top['expectedLambda'].min() * 0.9, df_top['expectedLambda'].max() * 1.1]) # <-- Add padding to X
+        margin=dict(l=50, r=20, t=50, b=50)
     )
-    
     return fig
