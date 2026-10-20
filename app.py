@@ -12,7 +12,7 @@ st.set_page_config(page_title="NHL Prop Engine", layout="wide")
 st.title("🏒 NHL Prop Engine Dashboard")
 
 # 🚨 FIX: Build the absolute path to the CSV
-BASE_DIR = sys.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "data", "built", "readytouse.csv")
 
 try:
