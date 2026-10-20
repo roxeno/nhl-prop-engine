@@ -4,8 +4,6 @@ import plotly.graph_objects as go
 from scipy.stats import poisson
 from pathlib import Path
 
-DATA_PATH = "../data/built/readytouse.csv"
-df = pd.read_csv(DATA_PATH)
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import poisson

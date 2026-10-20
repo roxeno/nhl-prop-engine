@@ -34,37 +34,6 @@ def run_gametime():
 
     print("\n✅ GameTime Complete! readytouse.csv is ready.")
 
-def run_dashboard():
-    """Builds a single fast HTML dashboard."""
-    print("Building dashboard...")
-    df = pd.read_csv("../data/built/readytouse.csv")
-    
-    fig1 = get_top_n_fig(df)
-    fig2 = get_pp_impact_fig(df)
-    fig3 = get_hd_impact_fig(df)
-    fig4 = get_top_5_distributions(df)
-    
-    output_path = "../data/built/dashboard.html"
-    
-    with open(output_path, "w") as f:
-        f.write("<html><head><title>NHL Prop Engine</title></head><body style='background-color: #f4f4f9; font-family: Arial;'>")
-        f.write("<h1 style='text-align:center;'>NHL Prop Engine Dashboard</h1>")
-        
-        f.write("<h2 style='margin-left: 20px;'>Top 25 Expected Shots</h2>")
-        f.write(fig1.to_html(full_html=False, include_plotlyjs='cdn'))
-        
-        f.write("<h2 style='margin-left: 20px;'>5v5 vs Power Play Impact</h2>")
-        f.write(fig2.to_html(full_html=False, include_plotlyjs=False))
-        
-        f.write("<h2 style='margin-left: 20px;'>High-Danger vs Total Volume</h2>")
-        f.write(fig3.to_html(full_html=False, include_plotlyjs=False))
-
-        f.write("<h2 style='margin-left: 20px;'>High-Danger vs Total Volume</h2>")
-        f.write(fig4.to_html(full_html=False, include_plotlyjs=False))
-        
-        f.write("</body></html>")
-        
-    print(f"✅ Dashboard saved to {output_path}! Double-click it to view.")
 
 def main():
     # 1. Setup the parser
@@ -86,8 +55,6 @@ def main():
     # 4. Route execution
     if args.action == "gametime":
         run_gametime()
-    elif args.action == "visualize":
-        run_dashboard()  # <--- HERE IT IS
 
 if __name__ == "__main__":
     main()
