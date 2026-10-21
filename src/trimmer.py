@@ -38,10 +38,12 @@ season_file_skater = pd.read_csv("../data/raw/skaters/Season_hockeyskater.csv")
 season_file_defender = pd.read_csv("../data/raw/defenders/Defender_hockeyskater.csv")
 
 #goalie path
-goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
+#goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
+goalie_file = pd.read_csv(f"../data/playingToday/goalie_2026-10-20.csv")
 
 #get schedule
-get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
+#get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
+get_tonightGames = pd.read_csv(f"../data/playingToday/games_2026-10-20.csv")
 get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
     
 
@@ -57,7 +59,7 @@ def execute_trimskaters():
     
     # 1. Original 'all' logic
     df = df[df['situation'] == 'all']
-    df = df.groupby(['playerId','name','team','games_played'])[['icetime','I_F_shotsOnGoal','I_F_missedShots','I_F_highDangerShots']].sum().reset_index()
+    df = df.groupby(['playerId','name','team','games_played'])[['icetime','I_F_shotsOnGoal','I_F_missedShots','I_F_highDangerShots','I_F_shotAttempts']].sum().reset_index()
 
     # 2. Calculate Rates
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
@@ -65,7 +67,7 @@ def execute_trimskaters():
     
     # 🚨 NEW: HD Ratio (What % of their shots are high-danger?)
     # We add 0.001 to prevent division by zero for players with 0 shots
-    df['raw_hd_ratio'] = df['I_F_highDangerShots'] / (df['I_F_shotsOnGoal'] + 0.001)
+    df['raw_hd_ratio'] = df['I_F_highDangerShots'] / (df['I_F_shotAttempts'] + 0.001)
     
     # 3. The New PP Logic
     df_pp = season_file_skater[season_file_skater['situation'] == '5on4']
@@ -96,6 +98,7 @@ def execute_trimskaters():
         df['season_weight'] * df['shots_per_60'] +
         df['career_weight'] * df['career_shots_per_60']
     )
+    
 
     # 7. Blending (TOI)
     df['season_avg_toi_sec'] = df['icetime'] / df['games_played']

@@ -105,6 +105,7 @@ def execute_calculation():
     # directly to their Expected Lambda. This prevents small-sample noise.
     # Cap the HD ratio at 0.50 (50%) to prevent corrupted data from breaking the model
     df['hd_ratio'] = df['hd_ratio'].clip(upper=0.50)
+    
     df['expectedLambda_hd'] = df['expectedLambda'] * df['hd_ratio']
 
     # Conservative conversion rate for High-Danger shots
