@@ -30,7 +30,7 @@ output_dir_defender = Path("../data/trimmedDefenders/")
 output_dir_built = Path('../data/playingToday')
 
 #careerfile path
-career_file_skater = pd.read_csv("../data/raw/skaters/Career_hockeyskater.csv")
+career_file_skater = pd.read_csv("../assets/Careerprior_hockeyskater.csv")
 
 
 #seasonfile path
@@ -64,49 +64,51 @@ def execute_trimskaters():
     # 2. Calculate Rates
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
     df['fenwick_per_60'] = (df['I_F_shotsOnGoal'] + df['I_F_missedShots']) / (df['icetime'] / 3600)
-    
-    # 🚨 NEW: HD Ratio (What % of their shots are high-danger?)
-    # We add 0.001 to prevent division by zero for players with 0 shots
-    df['raw_hd_ratio'] = df['I_F_highDangerShots'] / (df['I_F_shotAttempts'] + 0.001)
+    df['hd_shots_per_60'] = df['I_F_highDangerShots'] / (df['icetime'] / 3600)
     
     # 3. The New PP Logic
     df_pp = season_file_skater[season_file_skater['situation'] == '5on4']
     df_pp = df_pp.groupby(['playerId','games_played'])[['icetime', 'I_F_shotsOnGoal','I_F_highDangerShots']].sum().reset_index()
     df_pp['5on4_shots_per_60'] = df_pp['I_F_shotsOnGoal'] / (df_pp['icetime'] / 3600)
     df_pp['5on4_avg_toi_min'] = (df_pp['icetime'] / df_pp['games_played']) / 60
-    df_pp['5on4_hd_ratio'] = df_pp['I_F_highDangerShots'] / (df_pp['I_F_shotsOnGoal'] + 0.001)
     
     # Keep only the PP columns to merge
-    df_pp = df_pp[['playerId', '5on4_shots_per_60', '5on4_avg_toi_min', '5on4_hd_ratio']]
+    df_pp = df_pp[['playerId', '5on4_shots_per_60', '5on4_avg_toi_min']]
     
     # 4. Merge the PP stats into the main df
     df = pd.merge(df, df_pp, on='playerId', how='left')
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].fillna(0)
-    df['5on4_hd_ratio'] = df['5on4_hd_ratio'].fillna(0)
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     
-    # 5. Merge Career
-    df = pd.merge(df, career_file_skater, on='playerId', how='inner')
+    # 5. NEW: Load and merge the 3-Year MoneyPuck priors
+    df = pd.merge(df, career_file_skater[['playerId', 'career_hd_per_60','career_shots_per_60','career_icetime']], on='playerId', how='left')
+    
+    # If a player is new and has no 3-year history, fall back to league average
+    LEAGUE_AVG_HD_RATE = 0.8 
+    df['career_hd_per_60'] = df['career_hd_per_60'].fillna(LEAGUE_AVG_HD_RATE)
 
-    # 6. Blending (Total Shots)
+    # 6. Blending
     df['season_weight'] = df['games_played'] / (df['games_played'] + K)
     df['career_weight'] = 1 - df['season_weight']
-
-    df['hd_ratio'] = (df['season_weight'] * df['raw_hd_ratio']) + (df['career_weight'] * LEAGUE_AVG_HD_RATIO)
-
+    
+    # Blend Total Shots
     df['playerweighted_shotsper60'] = (
         df['season_weight'] * df['shots_per_60'] +
         df['career_weight'] * df['career_shots_per_60']
     )
     
+    # Blend High-Danger Shots
+    df['blended_hd_per_60'] = (
+        df['season_weight'] * df['hd_shots_per_60'] + 
+        df['career_weight'] * df['career_hd_per_60']
+    )
 
-    # 7. Blending (TOI)
+    # Blend TOI
     df['season_avg_toi_sec'] = df['icetime'] / df['games_played']
     df['blendedavgtoimin'] = ((0.6 * df['season_avg_toi_sec']) + (0.4 * df['career_icetime'])) / 60
 
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
-
 
 
 
@@ -169,12 +171,12 @@ def execute_commenceGameNight():
     # 4. Keep ONLY the necessary columns
     # INCLUDING the new 5on4 PP columns we just built!
     df = df[[
-        'playerId', 'name', 'team', 'home_or_away', 'opponent',
-        'shots_per_60', 'hd_ratio', 'fenwick_per_60', 'career_shots_per_60', 
-        '5on4_shots_per_60', '5on4_hd_ratio' ,'5on4_avg_toi_min', 
-        'team_xGA_per_60', 'Career_team_xGA_per_60', 'leagueAvgXGAper60', 'sv_pct',
-        'blendedavgtoimin','player_team_b2b', 'opponent_b2b'
-    ]]
+    'playerId', 'name', 'team', 'home_or_away', 'opponent', 'games_played',
+    'shots_per_60', 'hd_shots_per_60', 'fenwick_per_60', 'career_shots_per_60', 
+    '5on4_shots_per_60' ,'5on4_avg_toi_min', 
+    'team_xGA_per_60', 'Career_team_xGA_per_60', 'leagueAvgXGAper60', 'sv_pct',
+    'blendedavgtoimin', 'blended_hd_per_60','player_team_b2b', 'opponent_b2b'
+    ]  ]
     """if file_to_delete.exists():
         os.remove(file_to_delete)
         print(f"🗑️ Deleted old schedule: {file_to_delete.name}")

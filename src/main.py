@@ -16,7 +16,6 @@ def run_gametime():
     
     # 1. Scrape
     print("Step 1: Fetching schedule & team stats...")
-    execute_skater_career()
     execute_skater_season()
     execute_today_goalie()
     execute_today_schedule()

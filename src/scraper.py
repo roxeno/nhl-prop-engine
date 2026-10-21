@@ -93,42 +93,6 @@ def execute_skater_season():
 
     print("Download complete")
 
-def execute_skater_career():
-    """Engine 2: Downloads data and processes it using standard built-in csv."""
-    print(f"[{TODAY_STR}] Running Raw CSV Streams...")
-    # Example placeholder behavior using the native 'csv' module
-    
-    #Target NHL Stats API URL
-    start = 0
-    limit= 100
-
-    desired_extracted_name = "Career_hockeyskater.csv"
-
-    
-    all_df = []
-
-    print("Fetching live data from NHL API...")
-    for i in range(10):
-        NHL_API_URL = f"https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=true&isGame=false&sort=%5B%7B%22property%22:%22shots%22,%22direction%22:%22DESC%22%7D,%7B%22property%22:%22playerId%22,%22direction%22:%22ASC%22%7D%5D&start={start}&limit={limit}&cayenneExp=active%3D1%20and%20gameTypeId=2%20and%20seasonId%3C=20262027%20and%20seasonId%3E=19171918"
-        response = requests.get(NHL_API_URL,timeout=20)
-        response.raise_for_status()
-
-        json_payload = response.json()
-    
-        all_df.append(pd.DataFrame(json_payload.get("data",[])))
-
-        start +=100
-
-    df = pd.concat(all_df,ignore_index=True)
-    #Only needed section
-    df['career_shots_per_60'] = df['shots'] / df['gamesPlayed'] /df['timeOnIcePerGame'] * 3600
-    df['career_icetime'] = df['timeOnIcePerGame']
-    df = df[['playerId','career_shots_per_60','career_icetime']]
-    
-    final_destination = target_folder_skater / desired_extracted_name
-    df.to_csv(final_destination, index=False, encoding="utf-8")
-    print(f"Success! Saved {len(df)} players records into '{final_destination}'.")
-
 def execute_today_goalie():
     url = "https://www.dailyfaceoff.com/_next/data/JwMc7WvFWriiITA6mVncN/starting-goalies.json"
     target_directory = DOWNLOAD_DIR/'playingToday'
@@ -230,23 +194,18 @@ if __name__ == "__main__":
     # Add your command line choice argument mapping directly to your functions
     parser.add_argument(
         "action",
-        choices=["skater-career", "skater-season","goalie-game", "gamenight", "all"],
+        choices=["skater-season","goalie-game", "gamenight", "all"],
         help=(
-            "skaters-career : Download and map live NHL skaters career stats\n"
             "skaters-season : Download and map live NHL skaters season stats\n"
             "goalie-game : Get today's starting goalie\n"
             "gamenight : Download today's games\n"
-            "defense-career  : Download defense career stats\n"
-            "defense-season  : Download defense season stats\n"
             "all     : Execute all 3 jobs sequentially"
         )
     )
     args = parser.parse_args()
     
     # Route execution based on parameters passed to sys.argv
-    if args.action == "skater-career":
-        execute_skater_career()
-    elif args.action == "skater-season":
+    if args.action == "skater-season":
         execute_skater_season()
     elif args.action =="goalie-game":
         execute_today_goalie()
@@ -255,7 +214,6 @@ if __name__ == "__main__":
     
     elif args.action == "all":
         print("Executing comprehensive batch sequence...")
-        execute_skater_career()
         execute_skater_season()
         execute_today_goalie()
         execute_today_schedule()

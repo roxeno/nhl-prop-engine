@@ -76,21 +76,32 @@ def get_hd_impact_fig(df, n=40):
     return fig
 
 def get_goal_scorers_fig(df, n=25):
+    """Horizontal bar chart of top players by probability to score a goal."""
     df_top = df[df['p_at_least_1_goal'] > 0.05].sort_values("p_at_least_1_goal", ascending=False).head(n)
     df_top = df_top.iloc[::-1]
 
     fig = px.bar(
-        df_top, x="p_at_least_1_goal", y="name", orientation="h",
-        color="p_at_least_1_goal", color_continuous_scale="Reds", 
-        title=f"Top {n} Players: Probability to Score (Anytime Goal)",
-        labels={"p_at_least_1_goal": "P(≥1 Goal)", "name": ""},
-        hover_data={"opponent": True, "expectedGoals": ":.3f", "sv_pct": ":.3f"}
+        df_top,
+        x="p_at_least_1_goal",
+        y="name",
+        orientation="h",
+        color="expectedGoals",      # <-- Color the bars by xG, not just probability!
+        color_continuous_scale="Reds", 
+        title=f"Top {n} Players: Anytime Goal Scorer",
+        labels={"p_at_least_1_goal": "P(≥1 Goal)", "name": "", "expectedGoals": "xG"},
+        hover_data={
+            "opponent": True,
+            "expectedGoals": ":.3f",  # <-- Shows exactly how much xG they have
+            "expectedLambda_hd": ":.2f", # <-- Shows the HD shot volume driving the xG
+            "sv_pct": ":.3f",
+        }
     )
 
     fig.update_layout(
-        height=650, xaxis=dict(tickformat=".1%"),
+        height=650,
+        xaxis=dict(tickformat=".1%"), 
         yaxis=dict(tickmode="linear", tickfont=dict(size=10)),
-        margin=dict(l=90, r=10, t=50, b=40),
+        margin=dict(l=90, r=20, t=50, b=40),
         coloraxis_showscale=False,
     )
     return fig

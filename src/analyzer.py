@@ -35,25 +35,34 @@ import os
 def execute_calculation():
     df = pd.read_csv(file)
     
-    # 1. Fill NaN values (for players with 0 PP time)
+    # 1. Apply Manual Overrides (Lineup news)
+    df['manual_override'] = df['name'].map(LINEUP_OVERRIDES).fillna(1.0)
+    
+    # 2. Fill NaNs
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].fillna(0)
-    df['5on4_hd_ratio'] = df['5on4_hd_ratio'].fillna(0)
-    df['hd_ratio'] = df['hd_ratio'].fillna(0)
     
-    # 2. Blend the Rates and TOI
+    # 3. Blend the Rates
     df['playerweighted_shotsper60'] = (weight * df['shots_per_60']) + ((1-weight) * df['career_shots_per_60'])
     df['opponent_weighted_XGA'] = (weight * df['team_xGA_per_60']) + ((1-weight)* df['Career_team_xGA_per_60'])
     df['opponent_factor'] = (df['opponent_weighted_XGA'] / df['leagueAvgXGAper60'])
     df['home_factor'] = np.where(df['home_or_away'] == 'home', 1.05, 0.97)
     
-    # 3. Split the TOI
+    # 4. Context Factors (Goalie & Fatigue)
+    league_avg_sv = 0.900
+    df['goalie_factor'] = 1 - ((df['sv_pct'] - league_avg_sv) * 2)
+    df['goalie_factor'] = df['goalie_factor'].clip(lower=0.90, upper=1.10)
+
+    df['fatigue_multiplier'] = 1.0
+    df.loc[df['player_team_b2b'] == 1, 'fatigue_multiplier'] *= 0.95
+    df.loc[df['opponent_b2b'] == 1, 'fatigue_multiplier'] *= 1.05
+
+    # ==========================================
+    # TOTAL SHOTS LOGIC (5v5 vs PP)
+    # ==========================================
     df['5on4_toi'] = df['5on4_avg_toi_min']
     df['5on5_toi'] = (df['blendedavgtoimin'] - df['5on4_toi']).clip(lower=0)
     
-    # ==========================================
-    # REGULAR SHOTS LOGIC
-    # ==========================================
     df['total_shots'] = df['playerweighted_shotsper60'] * (df['blendedavgtoimin'] / 60)
     df['pp_shots'] = df['5on4_shots_per_60'] * (df['5on4_toi'] / 60)
     df['5v5_shots'] = (df['total_shots'] - df['pp_shots']).clip(lower=0)
@@ -61,66 +70,42 @@ def execute_calculation():
 
     df['opp_factor_5v5'] = df['opponent_factor']
     df['opp_factor_pp'] = 1 + ((df['opp_factor_5v5'] - 1) * 0.5) 
-
-    league_avg_sv = 0.900
-    df['goalie_factor'] = 1 - ((df['sv_pct'] - league_avg_sv) * 2)
-    df['goalie_factor'] = df['goalie_factor'].clip(lower=0.90, upper=1.10)
     
     lambda_5v5 = (df['5v5_rate'] * (df['5on5_toi'] / 60)) * df['opp_factor_5v5']
     lambda_pp = (df['5on4_shots_per_60'] * (df['5on4_toi'] / 60)) * df['opp_factor_pp']
     
     df['lambda_5v5'] = lambda_5v5 * df['home_factor'] * df['goalie_factor']
     df['lambda_pp'] = lambda_pp * df['home_factor'] * df['goalie_factor']
-    df['expectedLambda'] = df['lambda_5v5'] + df['lambda_pp']
+    df['expectedLambda'] = (df['lambda_5v5'] + df['lambda_pp']) * df['fatigue_multiplier'] * df['manual_override']
 
-    # ==========================================
-    # 🚨 NEW: BACK-TO-BACK FATIGUE MULTIPLIER
-    # ==========================================
-    df['fatigue_multiplier'] = 1.0
-
-    # If the player's team played yesterday, they shoot 5% less
-    df.loc[df['player_team_b2b'] == 1, 'fatigue_multiplier'] *= 0.95
-    
-    # If the opponent played yesterday, their defense is tired (allows 5% more)
-    df.loc[df['opponent_b2b'] == 1, 'fatigue_multiplier'] *= 1.05
-
-     # Apply it to the Total Lambda
-    df['expectedLambda'] = df['expectedLambda'] * df['fatigue_multiplier']
-
-    df['manual_override'] = df['name'].map(LINEUP_OVERRIDES).fillna(1.0)
-
-    # Apply the override to the total lambda
-    df['expectedLambda'] = df['expectedLambda'] * df['manual_override']
-    
-    # Apply it to the High-Danger Lambda too!
-    df['expectedLambda_hd'] = (df['expectedLambda'] * df['hd_ratio']) * df['fatigue_multiplier']* df['manual_override']
-    
     for n in range(1, 6):
         df[f'p_at_least_{n}'] = df['expectedLambda'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
 
     # ==========================================
-    # HIGH DANGER (HD) SHOTS LOGIC (SIMPLIFIED)
+    # HIGH DANGER (HD) LOGIC
     # ==========================================
-    # Instead of calculating a whole new split, we apply the player's HD Ratio 
-    # directly to their Expected Lambda. This prevents small-sample noise.
-    # Cap the HD ratio at 0.50 (50%) to prevent corrupted data from breaking the model
-    df['hd_ratio'] = df['hd_ratio'].clip(upper=0.50)
+    # Calculate base HD Lambda
+    df['expectedLambda_hd'] = df['hd_shots_per_60'] * (df['blendedavgtoimin'] / 60)
     
-    df['expectedLambda_hd'] = df['expectedLambda'] * df['hd_ratio']
+    # Apply ALL the exact same context factors as total shots
+    df['expectedLambda_hd'] = (
+        df['expectedLambda_hd'] * 
+        df['opponent_factor'] * 
+        df['goalie_factor'] * 
+        df['home_factor'] * 
+        df['fatigue_multiplier'] * 
+        df['manual_override']
+    )
 
-    # Conservative conversion rate for High-Danger shots
-    HD_CONVERSION_RATE = 0.15
-
-    # Calculate Expected Goals
-    df['expectedGoals'] = df['expectedLambda_hd'] * HD_CONVERSION_RATE
-
-    # Probability of scoring 1+ goals
-    df['p_at_least_1_goal'] = df['expectedGoals'].apply(lambda lam: poisson.sf(k=0, mu=lam))
-
-    # High Danger shots are rare, so we only calculate up to 3.
     for n in range(1, 4):
         df[f'p_hd_at_least_{n}'] = df['expectedLambda_hd'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
 
+    # ==========================================
+    # GOALS LOGIC (xG & Probability)
+    # ==========================================
+    HD_CONVERSION_RATE = 0.15
+    df['expectedGoals'] = df['expectedLambda_hd'] * HD_CONVERSION_RATE
+    df['p_at_least_1_goal'] = df['expectedGoals'].apply(lambda lam: poisson.sf(k=0, mu=lam))
 
     # ==========================================
     # SAVE
@@ -133,13 +118,14 @@ def execute_calculation():
                   'expectedLambda_hd',
                   'p_at_least_1', 'p_at_least_2', 'p_at_least_3', 'p_at_least_4', 'p_at_least_5',
                   'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3',
-                  'playerweighted_shotsper60', 'hd_ratio', 'blendedavgtoimin','sv_pct','player_team_b2b', 'opponent_b2b',
-                  'fatigue_multiplier','manual_override', 'expectedGoals','p_at_least_1_goal']
+                  'playerweighted_shotsper60', 'hd_shots_per_60', 'blendedavgtoimin', 'sv_pct', 
+                  'player_team_b2b', 'opponent_b2b', 'fatigue_multiplier', 'manual_override', 
+                  'expectedGoals', 'p_at_least_1_goal']
     
     df[final_cols].to_csv(final_destination, index=False)
     shutil.copy(final_destination, cachefile)
-    print("Calculation complete with 5v5/PP splits and HD Ratios!")
-
+    print("Calculation complete with 5v5/PP splits, HD Shots, and Expected Goals!")
+    
 # ==========================================
 # 3. THE INTERACTIVE CONTROL ROOM
 # ==========================================
