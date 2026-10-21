@@ -21,8 +21,7 @@ YESTERDAY_STR = get_yesterday_str()
 target_directory = Path("../data/playingToday")
 
 #K tuning ; Tuning based on gamesplayed; Early season trust career; Late season trust season stats
-K = 10  # shrinkage constant; higher = trust career more
-LEAGUE_AVG_HD_RATIO = 0.18
+K = 30  # shrinkage constant; higher = trust career more
 
 #outputfile
 output_dir_skater = Path("../data/trimmedSkaters/")
@@ -37,22 +36,13 @@ career_file_skater = pd.read_csv("../assets/Careerprior_hockeyskater.csv")
 season_file_skater = pd.read_csv("../data/raw/skaters/Season_hockeyskater.csv")
 season_file_defender = pd.read_csv("../data/raw/defenders/Defender_hockeyskater.csv")
 
-#goalie path
-#goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
-goalie_file = pd.read_csv(f"../data/playingToday/goalie_2026-10-20.csv")
 
-#get schedule
-#get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
-get_tonightGames = pd.read_csv(f"../data/playingToday/games_2026-10-20.csv")
-get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
+
     
 
 # ==========================================
 # 2. THE THREE TASK ENGINES
 # ==========================================
-
-
-
 def execute_trimskaters():
     df = season_file_skater
     desired_extracted_name = "TrimmedSeason_hockeyskater.csv"
@@ -61,12 +51,21 @@ def execute_trimskaters():
     df = df[df['situation'] == 'all']
     df = df.groupby(['playerId','name','team','games_played'])[['icetime','I_F_shotsOnGoal','I_F_missedShots','I_F_highDangerShots','I_F_shotAttempts']].sum().reset_index()
 
-    # 2. Calculate Rates
+    # 2. Compute league averages ONCE (used for three-way blend)
+    LEAGUE_HD_PER_60 = (
+        df['I_F_highDangerShots'].sum() / (df['icetime'].sum() / 3600.0)
+    ).round(2)
+    LEAGUE_SHOTS_PER_60 = (
+        df['I_F_shotsOnGoal'].sum() / (df['icetime'].sum() / 3600.0)
+    ).round(2)
+    LEAGUE_TOI_SEC = 15 * 60  # ~15 min league average, adjust if you have real number
+
+    # 3. Calculate Rates — NO placeholder override; let the blend shrink zeros
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
     df['fenwick_per_60'] = (df['I_F_shotsOnGoal'] + df['I_F_missedShots']) / (df['icetime'] / 3600)
     df['hd_shots_per_60'] = df['I_F_highDangerShots'] / (df['icetime'] / 3600)
     
-    # 3. The New PP Logic
+    # 4. The New PP Logic
     df_pp = season_file_skater[season_file_skater['situation'] == '5on4']
     df_pp = df_pp.groupby(['playerId','games_played'])[['icetime', 'I_F_shotsOnGoal','I_F_highDangerShots']].sum().reset_index()
     df_pp['5on4_shots_per_60'] = df_pp['I_F_shotsOnGoal'] / (df_pp['icetime'] / 3600)
@@ -75,42 +74,56 @@ def execute_trimskaters():
     # Keep only the PP columns to merge
     df_pp = df_pp[['playerId', '5on4_shots_per_60', '5on4_avg_toi_min']]
     
-    # 4. Merge the PP stats into the main df
+    # 5. Merge the PP stats into the main df
     df = pd.merge(df, df_pp, on='playerId', how='left')
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].fillna(0)
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     
-    # 5. NEW: Load and merge the 3-Year MoneyPuck priors
+    # 6. Load and merge the prior-year career priors
     df = pd.merge(df, career_file_skater[['playerId', 'career_hd_per_60','career_shots_per_60','career_icetime','career_games']], on='playerId', how='left')
     
-    # If a player is new and has no 3-year history, fall back to league average
-    LEAGUE_AVG_HD_RATE = 0.8 
-    df['career_hd_per_60'] = df['career_hd_per_60'].fillna(LEAGUE_AVG_HD_RATE)
+    # --- Guards: missing career data → fall back to league average (fillna only, NOT == 0) ---
+    df['career_hd_per_60'] = df['career_hd_per_60'].fillna(LEAGUE_HD_PER_60)
+    df['career_shots_per_60'] = df['career_shots_per_60'].fillna(LEAGUE_SHOTS_PER_60)
+    df['career_icetime'] = df['career_icetime'].fillna(df['icetime'])
+    df['career_games'] = df['career_games'].fillna(df['games_played'])
 
-    # 6. Blending
+    # 7. THREE-WAY BLENDING (season / career / league average)
+    # Season trust: GP-based
     df['season_weight'] = df['games_played'] / (df['games_played'] + K)
-    df['career_weight'] = 1 - df['season_weight']
-    
+
+    # Career trust: also GP-based (down-weight small career samples)
+    career_trust = df['career_games'] / (df['career_games'] + K)
+
+    # Effective weights
+    df['career_weight'] = (1 - df['season_weight']) * career_trust
+    df['league_weight'] = 1 - df['season_weight'] - df['career_weight']
+
     # Blend Total Shots
     df['playerweighted_shotsper60'] = (
-        df['season_weight'] * df['shots_per_60'] +
-        df['career_weight'] * df['career_shots_per_60']
-    )
-    
-    # Blend High-Danger Shots
-    df['blended_hd_per_60'] = (
-        df['season_weight'] * df['hd_shots_per_60'] + 
-        df['career_weight'] * df['career_hd_per_60']
+        df['season_weight'] * df['shots_per_60']
+        + df['career_weight'] * df['career_shots_per_60']
+        + df['league_weight'] * LEAGUE_SHOTS_PER_60
     )
 
-    # Blend TOI
+    # Blend HD Shots
+    df['blended_hd_per_60'] = (
+        df['season_weight'] * df['hd_shots_per_60']
+        + df['career_weight'] * df['career_hd_per_60']
+        + df['league_weight'] * LEAGUE_HD_PER_60
+    )
+
+    # Blend TOI (same three-way)
     df['season_avg_toi_sec'] = df['icetime'] / df['games_played']
     df['career_avg_toi_sec'] = df['career_icetime'] / df['career_games']
-    df['blendedavgtoimin'] = ((0.6 * df['season_avg_toi_sec']) + (0.4 * df['career_avg_toi_sec'])) / 60
+    df['blendedavgtoimin'] = (
+        df['season_weight'] * df['season_avg_toi_sec']
+        + df['career_weight'] * df['career_avg_toi_sec']
+        + df['league_weight'] * LEAGUE_TOI_SEC
+    ) / 60
 
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
-
 
 
 def execute_trimcareer():
@@ -130,6 +143,7 @@ def execute_trimcareer():
     
 
 def execute_opponent():  
+    goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
     df = season_file_defender
     career_file_defender = pd.read_csv("../data/raw/defenders/C_Defender_hockeyskater.csv")
 
@@ -147,6 +161,8 @@ def execute_opponent():
 
 def execute_commenceGameNight():
     #load yesterday game schedule
+    get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
+    get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
     file_to_delete = target_directory / f"games_{YESTERDAY_STR}.csv"
     b2b_teams = get_yesterdayGame
 
@@ -174,15 +190,10 @@ def execute_commenceGameNight():
     df = df[[
     'playerId', 'name', 'team', 'home_or_away', 'opponent', 'games_played', 'career_games',
     'shots_per_60', 'hd_shots_per_60', 'fenwick_per_60', 'career_shots_per_60', 
-    '5on4_shots_per_60' ,'5on4_avg_toi_min', 
+    '5on4_shots_per_60' ,'5on4_avg_toi_min', 'I_F_highDangerShots', 'icetime',
     'team_xGA_per_60', 'Career_team_xGA_per_60', 'leagueAvgXGAper60', 'sv_pct',
     'blendedavgtoimin', 'blended_hd_per_60','player_team_b2b', 'opponent_b2b'
-    ]  ]
-    """if file_to_delete.exists():
-        os.remove(file_to_delete)
-        print(f"🗑️ Deleted old schedule: {file_to_delete.name}")
-    else:
-        print(f"✅ No schedule found to delete for {YESTERDAY_STR}.")"""
+    ]]
 
 
     final_destination = output_dir_built / desired_extracted_name

@@ -41,6 +41,14 @@ def execute_calculation():
     # 2. Fill NaNs
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].fillna(0)
+
+    # 🚨 FIX #4: Replace the 0.8 placeholder with the actual league-average HD rate
+    LEAGUE_HD_PER_60 = (
+        df['I_F_highDangerShots'].sum() /
+        (df['icetime'].sum() / 3600.0)
+    ).round(2)
+    # If blended_hd_per_60 is missing or NaN, fall back to league average (not 0.8)
+    df['blended_hd_per_60'] = df['blended_hd_per_60'].fillna(LEAGUE_HD_PER_60)
     
     # 3. Blend the Rates
     df['playerweighted_shotsper60'] = (weight * df['shots_per_60']) + ((1-weight) * df['career_shots_per_60'])
@@ -84,12 +92,10 @@ def execute_calculation():
     # ==========================================
     # HIGH DANGER (HD) LOGIC
     # ==========================================
-    # Calculate base HD Lambda
-    df['expectedLambda_hd'] = df['hd_shots_per_60'] * (df['blendedavgtoimin'] / 60)
+    # 🚨 FIX #1: Use blended_hd_per_60 (season+career blend), NOT the raw 4-game hd_shots_per_60
+    df['expectedLambda_hd'] = df['blended_hd_per_60'] * (df['blendedavgtoimin'] / 60)
 
-    df['expectedLambda_hd'] = df['expectedLambda_hd'] * df['opponent_factor'] * df['goalie_factor'] * df['home_factor']
-    
-    # Apply ALL the exact same context factors as total shots
+    # Apply ALL context factors (opponent, goalie, home, fatigue, manual override)
     df['expectedLambda_hd'] = (
         df['expectedLambda_hd'] * 
         df['opponent_factor'] * 
@@ -98,6 +104,9 @@ def execute_calculation():
         df['fatigue_multiplier'] * 
         df['manual_override']
     )
+
+    # 🚨 FIX #3: Zero out HD lambda when total expectedLambda is 0 (player won't play)
+    df.loc[df['expectedLambda'] <= 0, 'expectedLambda_hd'] = 0.0
 
     for n in range(1, 4):
         df[f'p_hd_at_least_{n}'] = df['expectedLambda_hd'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
@@ -115,12 +124,14 @@ def execute_calculation():
     desired_extracted_name = "readytouse.csv"
     final_destination = outputDir / desired_extracted_name
     
+    # 🚨 FIX #2: manual_override is now applied to expectedLambda (line above), so it's accurate.
+    # Also swap hd_shots_per_60 → blended_hd_per_60 in final_cols so the output reflects what was used.
     final_cols = ['playerId', 'name', 'team', 'opponent', 
                   'expectedLambda', 'lambda_5v5', 'lambda_pp', 
                   'expectedLambda_hd',
                   'p_at_least_1', 'p_at_least_2', 'p_at_least_3', 'p_at_least_4', 'p_at_least_5',
                   'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3',
-                  'playerweighted_shotsper60', 'hd_shots_per_60', 'blendedavgtoimin', 'sv_pct', 
+                  'playerweighted_shotsper60', 'blended_hd_per_60', 'blendedavgtoimin', 'sv_pct', 
                   'player_team_b2b', 'opponent_b2b', 'fatigue_multiplier', 'manual_override', 
                   'expectedGoals', 'p_at_least_1_goal']
     

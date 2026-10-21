@@ -1,5 +1,5 @@
 🏒 NHL Prop Engine
-A fully automated, quantitative data pipeline for projecting NHL Player Shots on Goal.
+A fully automated data pipeline for projecting NHL Player Shots on Goal.
 
 This project pulls raw data from the NHL API and MoneyPuck, applies advanced statistical modeling, and uses a Poisson distribution to calculate the exact probability of a player hitting specific shot milestones.
 
