@@ -86,6 +86,8 @@ def execute_calculation():
     # ==========================================
     # Calculate base HD Lambda
     df['expectedLambda_hd'] = df['hd_shots_per_60'] * (df['blendedavgtoimin'] / 60)
+
+    df['expectedLambda_hd'] = df['expectedLambda_hd'] * df['opponent_factor'] * df['goalie_factor'] * df['home_factor']
     
     # Apply ALL the exact same context factors as total shots
     df['expectedLambda_hd'] = (
@@ -125,7 +127,7 @@ def execute_calculation():
     df[final_cols].to_csv(final_destination, index=False)
     shutil.copy(final_destination, cachefile)
     print("Calculation complete with 5v5/PP splits, HD Shots, and Expected Goals!")
-    
+
 # ==========================================
 # 3. THE INTERACTIVE CONTROL ROOM
 # ==========================================

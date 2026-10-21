@@ -81,7 +81,7 @@ def execute_trimskaters():
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     
     # 5. NEW: Load and merge the 3-Year MoneyPuck priors
-    df = pd.merge(df, career_file_skater[['playerId', 'career_hd_per_60','career_shots_per_60','career_icetime']], on='playerId', how='left')
+    df = pd.merge(df, career_file_skater[['playerId', 'career_hd_per_60','career_shots_per_60','career_icetime','career_games']], on='playerId', how='left')
     
     # If a player is new and has no 3-year history, fall back to league average
     LEAGUE_AVG_HD_RATE = 0.8 
@@ -105,7 +105,8 @@ def execute_trimskaters():
 
     # Blend TOI
     df['season_avg_toi_sec'] = df['icetime'] / df['games_played']
-    df['blendedavgtoimin'] = ((0.6 * df['season_avg_toi_sec']) + (0.4 * df['career_icetime'])) / 60
+    df['career_avg_toi_sec'] = df['career_icetime'] / df['career_games']
+    df['blendedavgtoimin'] = ((0.6 * df['season_avg_toi_sec']) + (0.4 * df['career_avg_toi_sec'])) / 60
 
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
@@ -171,7 +172,7 @@ def execute_commenceGameNight():
     # 4. Keep ONLY the necessary columns
     # INCLUDING the new 5on4 PP columns we just built!
     df = df[[
-    'playerId', 'name', 'team', 'home_or_away', 'opponent', 'games_played',
+    'playerId', 'name', 'team', 'home_or_away', 'opponent', 'games_played', 'career_games',
     'shots_per_60', 'hd_shots_per_60', 'fenwick_per_60', 'career_shots_per_60', 
     '5on4_shots_per_60' ,'5on4_avg_toi_min', 
     'team_xGA_per_60', 'Career_team_xGA_per_60', 'leagueAvgXGAper60', 'sv_pct',
