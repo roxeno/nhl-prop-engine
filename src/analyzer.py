@@ -34,6 +34,9 @@ import os
 
 def execute_calculation():
     df = pd.read_csv(file)
+    # 🚨 FIX: If a player is listed twice, keep the one with the highest blended TOI
+    df = df.sort_values('blendedavgtoimin', ascending=False)
+    df = df.drop_duplicates(subset=['playerId'], keep='first')
     
     # 1. Apply Manual Overrides (Lineup news)
     df['manual_override'] = df['name'].map(LINEUP_OVERRIDES).fillna(1.0)
