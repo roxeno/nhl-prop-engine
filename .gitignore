@@ -16,8 +16,9 @@ data/trimmedDefenders/
 data/trimmedSkaters/
 
 # src file
-src/pea.py
+src/apple.py
 src/bean.py
+src/picks.csv
 
 # OS
 .DS_Store

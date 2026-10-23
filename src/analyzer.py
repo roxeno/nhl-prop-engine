@@ -38,9 +38,16 @@ def execute_calculation():
     # 1. Apply Manual Overrides (Lineup news)
     df['manual_override'] = df['name'].map(LINEUP_OVERRIDES).fillna(1.0)
     
-    # 2. Fill NaNs
+    # 2. Fill NaNs (Expanded)
     df['5on4_avg_toi_min'] = df['5on4_avg_toi_min'].fillna(0)
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].fillna(0)
+    
+    # 🚨 ADD THESE: Fix missing data that causes infinite/NaN lambdas
+    df['blendedavgtoimin'] = df['blendedavgtoimin'].fillna(0)
+    df['team_xGA_per_60'] = df['team_xGA_per_60'].fillna(df['leagueAvgXGAper60'])
+    df['Career_team_xGA_per_60'] = df['Career_team_xGA_per_60'].fillna(df['leagueAvgXGAper60'])
+    df['sv_pct'] = df['sv_pct'].fillna(0.900) # default league average
+
 
     # 🚨 FIX #4: Replace the 0.8 placeholder with the actual league-average HD rate
     LEAGUE_HD_PER_60 = (
@@ -114,6 +121,8 @@ def execute_calculation():
     # ==========================================
     # GOALS LOGIC (xG & Probability)
     # ==========================================
+    df['expectedLambda'] = df['expectedLambda'].replace([np.inf, -np.inf], np.nan).fillna(0)
+    df['expectedLambda_hd'] = df['expectedLambda_hd'].replace([np.inf, -np.inf], np.nan).fillna(0)
     HD_CONVERSION_RATE = 0.15
     df['expectedGoals'] = df['expectedLambda_hd'] * HD_CONVERSION_RATE
     df['p_at_least_1_goal'] = df['expectedGoals'].apply(lambda lam: poisson.sf(k=0, mu=lam))

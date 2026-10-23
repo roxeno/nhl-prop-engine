@@ -23,6 +23,7 @@ def get_top_n_fig(df, n=25):
         margin=dict(l=90, r=10, t=50, b=40), # Tighter margins
         yaxis=dict(tickmode="linear", tickfont=dict(size=10)),
         coloraxis_showscale=False,
+        xaxis=dict(range=[0, df_top['expectedLambda'].max() * 1.1]) 
     )
     return fig
 
