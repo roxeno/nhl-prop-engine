@@ -1,45 +1,35 @@
-# 🚨 TYPE YOUR MANUAL ADJUSTMENTS HERE
-# check DailyFaceoff to see whose injuried or coming out injury,star is out or demoted
-# Format: "Player Name": Multiplier
-# 0.85 = -15% (Injured, demoted, tough matchup, playing with a bad center)
-# 1.15 = +15% (Playing with McDavid, top PP unit, opposing goalie is out)
-
 LINEUP_OVERRIDES = {
-    # Example: Auston Matthews lost his winger, downgrade him
-    #"Auston Matthews": 0.85, 
-    
-    # Example: Connor McDavid is playing with Draisaitl, boost him
-    #"Connor McDavid": 1.15,
-    
-    # Example: Player returning from injury, limited minutes
-    #"Jack Eichel": 0.90,
-
-    # penguins
+    # Penguins
     "Sidney Crosby": 0.85,      # Rust is out/injured, Crosby's line is weaker
-    "Evgeni Malkin": 0,      # Second line is a mismatch, volume will drop
-    "Bryan Rust": 0.70,         # Lower body injury, likely out or limited
+    "Evgeni Malkin": 0,         # Second line is a mismatch, volume will drop
+    "Bryan Rust": 0,            # Placed on IR (Lower Body)
     "Rickard Rakell": 0.95,     # Will get top-line minutes, but tough matchup
 
+    # Canadiens / Kings / Panthers / Rangers
+    "Quinton Byfield": 0.85,    # DTD with an upper-body injury
+    "Nick Suzuki": 0,           # Out 2-4 weeks (Hand injury)
+    "Cole Caufield": 0.80,      # Value dipped without Suzuki
+    "Juraj Slafovsky": 0.80,    # Value dipped without Suzuki
+    "Aleksander Barkov": 0,     # Out 6-8 weeks (Lower body)
+    "Brad Marchand": 0,         # Out 6 weeks (Knee injury)
+    "Igor Shesterkin": 0,       # Out for the season (Knee/Leg injury)
+    "Taylor Hall": 0.90,        # ACTIVATED from IR; skating on top lines but monitor minutes
 
-    "Quinton Byfield": 0, 
-    "Nick Suzuki" :0,
-    "Cole Caufield":0.80,
-    "Juraj Slafovsky":0.80,
-    "Aleksander Barkov": 0,
-    "Brad Marchand": 0, # (Florida Panthers): Out 6 weeks with a lower-body injury.
-    "Igor Shesterkin": 0, # (New York Rangers): Out for the season following knee surgery.
-    "Taylor Hall":0, #(Chicago Blackhawks): On injured reserve, targeting a return around November 7.
+    # Edmonton Oilers (CRITICAL TODAY)
+    "Zach Hyman": 0,             # Placed on IR Wednesday (Neck injury)
+    "Connor McDavid": 1.20,      # Massive boost: playing directly with Draisaitl due to thin depth
+    "Leon Draisaitl": 1.20,      # Stacking the top line gives both elite volume ceiling
 
-    # Toronto Maple Leafs
-    "John Tavares": 0,           # Placed on IR; out for multi-game road trip
-    "Mitch Marner": 0.80,         # DTD (Personal); high risk if late scratch
-    "William Nylander": 1.15,     # Massive volume spike with Tavares/Marner out
-    "Elvis Merzlikins":0, #(Toronto Maple Leafs): Out 4 to 6 months with a shoulder injury.
-    "Chris Tanev":0, #(Toronto Maple Leafs): On injured reserve with an upper-body injury (minimum 3 games).
+    # Toronto Maple Leafs (EXTREME INJURY DEPTH DEPLETION)
+    "John Tavares": 0,           # Placed on IR; out week-to-week
+    "Kirill Marchenko": 0,       # NEW: Listed week-to-week Wednesday (Lower body)
+    "Mitch Marner": 0.80,        # DTD (Personal); high risk if late scratch
+    "William Nylander": 1.20,    # Max volume/deployment with Tavares and Marchenko out
+    "Chris Tanev": 0.85,         # Upgraded to DTD; returned to practice Wednesday
 
     # Vegas Golden Knights
-    "Alex Pietrangelo": 0,       # Placed on LTIR (Hip); out long-term
+    "Alex Pietrangelo": 0,       # Placed on LTIR (Hip)
     "Shea Theodore": 1.15,       # Inherits top PP unit and max deployment minutes
-    
-
+    "Carter Hart": 0,            # Injured in Tuesday morning skate; evaluating timeline
+    "Adin Hill": 1.10,           # Inherits net control on a robust defensive team
 }
