@@ -94,7 +94,7 @@ def execute_skater_season():
     print("Download complete")
 
 def execute_today_goalie():
-    url = "https://www.dailyfaceoff.com/_next/data/JwMc7WvFWriiITA6mVncN/starting-goalies.json"
+    url = "https://www.dailyfaceoff.com/_next/data/bvf7AZKBD0sY78rgWU2uq/starting-goalies.json"
     target_directory = DOWNLOAD_DIR/'playingToday'
     filename = f'goalie_{TODAY_STR}.csv'
     file_to_delete = target_directory / f"goalie_{yesterday_str}.csv"

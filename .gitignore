@@ -28,5 +28,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+#bat
+daily_tims.bat
+
 # Env
 .env
