@@ -145,7 +145,7 @@ def execute_today_goalie():
 def execute_today_schedule():
     """Engine 3: Downloads and flattens NHL schedule json into a CSV."""
     print(f"[{TODAY_STR}] Running NHL schedule Export...")
-    url = f"https://api-web.nhle.com/v1/schedule/now"
+    url = f"https://api-web.nhle.com/v1/schedule/{TODAY_STR}"
     target_directory = DOWNLOAD_DIR/ 'playingToday'
     file_name = f'games_{TODAY_STR}.csv'
     #file_to_delete = target_directory / f"games_{yesterday_str}.csv"
