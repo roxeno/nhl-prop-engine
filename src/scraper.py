@@ -94,7 +94,7 @@ def execute_skater_season():
     print("Download complete")
 
 def execute_today_goalie():
-    url = "https://www.dailyfaceoff.com/_next/data/bvf7AZKBD0sY78rgWU2uq/starting-goalies.json"
+    url = "https://www.dailyfaceoff.com/_next/data/_p9kWHBA47ELku39dkVwt/starting-goalies.json"
     target_directory = DOWNLOAD_DIR/'playingToday'
     filename = f'goalie_{TODAY_STR}.csv'
     file_to_delete = target_directory / f"goalie_{yesterday_str}.csv"
@@ -145,7 +145,7 @@ def execute_today_goalie():
 def execute_today_schedule():
     """Engine 3: Downloads and flattens NHL schedule json into a CSV."""
     print(f"[{TODAY_STR}] Running NHL schedule Export...")
-    url = f"https://api-web.nhle.com/v1/schedule/{TODAY_STR}"
+    url = f"https://api-web.nhle.com/v1/schedule/now"
     target_directory = DOWNLOAD_DIR/ 'playingToday'
     file_name = f'games_{TODAY_STR}.csv'
     #file_to_delete = target_directory / f"games_{yesterday_str}.csv"

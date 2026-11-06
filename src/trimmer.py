@@ -21,7 +21,7 @@ YESTERDAY_STR = get_yesterday_str()
 target_directory = Path("../data/playingToday")
 
 #K tuning ; Tuning based on gamesplayed; Early season trust career; Late season trust season stats
-K_SEASON = 15   # lower → trust current season sooner
+K_SEASON = 12   # lower → trust current season sooner
 K_CAREER = 40   # higher → down-weight 1-year careers
 
 #outputfile
@@ -49,7 +49,7 @@ def execute_trimskaters():
     desired_extracted_name = "TrimmedSeason_hockeyskater.csv"
     
     # 1. Original 'all' logic
-    df = df[df['situation'] == 'all']
+    df = df[df['situation'].isin(['5on5', '5on4', '4on5'])]
     df = df.groupby(['playerId','name','team','games_played'])[['icetime','I_F_shotsOnGoal','I_F_missedShots','I_F_highDangerShots','I_F_goals','I_F_highDangerGoals']].sum().reset_index()
 
     # 2. Compute league averages ONCE (used for three-way blend)
@@ -66,7 +66,7 @@ def execute_trimskaters():
     career_non_hd_shots = sum(df['I_F_shotsOnGoal']) - sum(df['I_F_highDangerShots'])
     LEAGUE_NON_HD_SH_PCT = career_non_hd_goals / career_non_hd_shots
 
-    LEAGUE_TOI_SEC = (df['icetime'].sum() / df['games_played'].sum())
+    LEAGUE_TOI_SEC = 900
     
     # 3. Calculate Rates — NO placeholder override; let the blend shrink zeros
     df['shots_per_60'] = df['I_F_shotsOnGoal'] / (df['icetime'] / 3600)
@@ -84,12 +84,24 @@ def execute_trimskaters():
 
     df_pp['5on4_shots_per_60'] = df_pp['I_F_shotsOnGoal'] / (df_pp['icetime'] / 3600)
     df_pp['5on4_avg_toi_min']  = (df_pp['icetime'] / df_pp['games_played']) / 60
+    target_pp_toi = 2.5   # was 2.0
+
+    current_mean = df_pp['5on4_avg_toi_min'].mean()
+    if current_mean > 0.1:
+        scale = 2.5 / current_mean
+        df_pp['5on4_avg_toi_min'] = df_pp['5on4_avg_toi_min'] * scale
+        print(f"PP TOI scaled: {current_mean:.2f} → {df_pp['5on4_avg_toi_min'].mean():.2f}")
+    else:
+        print(f"⚠️  Skipping PP TOI scale — current mean is {current_mean:.2f}")
+
 
     # League PP rate — computed from raw df_pp BEFORE merging in zeros
-    LEAGUE_PP_SHOTS_PER_60 = (
-        df_pp['I_F_shotsOnGoal'].sum() / (df_pp['icetime'].sum() / 3600)
-    )
-    PP_SHRINK_WEIGHT = 0.7  # 70% player / 30% league
+
+    print("df_pp shape:", df_pp.shape)
+    print("Unique playerIds:", df_pp['playerId'].nunique())
+    print("Total rows:", len(df_pp))
+    LEAGUE_PP_SHOTS_PER_60 = 5
+    print(f"LEAGUE_PP_SHOTS_PER_60: {LEAGUE_PP_SHOTS_PER_60:.2f}")
 
     # In df_pp (before merging), compute PP games played:
     df_pp['pp_games'] = df_pp['icetime'] / (df_pp['5on4_avg_toi_min'] * 60)
@@ -100,7 +112,7 @@ def execute_trimskaters():
     # (Only an approximation — a player may have played 15 games but zero PP — but
     # for players who DO have PP time, this is close enough.)
 
-    PP_PRIOR_MIN = 60  # minutes of league-average PP rate as prior
+    PP_PRIOR_MIN = 20  # minutes of league-average PP rate as prior
     df_pp['pp_trust'] = (df_pp['icetime'] / 60) / ((df_pp['icetime'] / 60) + PP_PRIOR_MIN)
 
     # 5. Merge the PP stats into the main df
@@ -116,6 +128,7 @@ def execute_trimskaters():
         df['pp_trust'] * df['5on4_shots_per_60'] + (1 - df['pp_trust']) * LEAGUE_PP_SHOTS_PER_60,
         0.0
     )
+    
 
     # Hard cap: no player realistically shoots above ~20 per 60 on the PP
     df['5on4_shots_per_60'] = df['5on4_shots_per_60'].clip(upper=20)
@@ -143,11 +156,32 @@ def execute_trimskaters():
     df['career_weight'] = (1 - df['season_weight']) * career_trust
     df['league_weight'] = 1 - df['season_weight'] - df['career_weight']
 
-    # Blend Total Shots
+    # After computing season_weight and career_weight:
+# For high-volume shooters, trust the current season more
+
+    # Identify high-volume shooters by their raw season rate
+    high_volume = df['shots_per_60'] > 9.0
+
+    # For them, inflate season_weight and deflate career_weight
+    df['season_weight_adj'] = np.where(
+        high_volume,
+        df['season_weight'] + 0.15,   # bump season weight by 15%
+        df['season_weight']
+    )
+    # Clip so it doesn't exceed 0.85
+    df['season_weight_adj'] = df['season_weight_adj'].clip(upper=0.85)
+
+    # Recompute career_weight and league_weight with adjusted season weight
+    df['career_weight_adj'] = (1 - df['season_weight_adj']) * (
+        df['career_games'] / (df['career_games'] + K_CAREER)
+    )
+    df['league_weight_adj'] = 1 - df['season_weight_adj'] - df['career_weight_adj']
+
+    # Recompute the blend with adjusted weights
     df['blended_shots_per60'] = (
-        df['season_weight'] * df['shots_per_60']
-        + df['career_weight'] * df['career_shots_per_60']
-        + df['league_weight'] * LEAGUE_SHOTS_PER_60
+        df['season_weight_adj'] * df['shots_per_60']
+        + df['career_weight_adj'] * df['career_shots_per_60']
+        + df['league_weight_adj'] * LEAGUE_SHOTS_PER_60
     )
 
     # Blend HD Shots
@@ -179,6 +213,9 @@ def execute_trimskaters():
         + df['career_weight'] * df['career_avg_toi_sec']
         + df['league_weight'] * LEAGUE_TOI_SEC
     ) / 60
+    print("blendedavgtoimin mean:", df['blendedavgtoimin'].mean())
+    print("season_avg_toi_sec mean:", df['season_avg_toi_sec'].mean())
+    print("5on4_shots_per_60 mean:", df['5on4_shots_per_60'].mean())
 
     final_destination = output_dir_skater / desired_extracted_name
     df.to_csv(final_destination, index=False)
@@ -203,6 +240,7 @@ def execute_trimcareer():
 
 def execute_opponent():  
     goalie_file = pd.read_csv(f"../data/playingToday/goalie_{TODAY_STR}.csv")
+
     df = season_file_defender
     career_file_defender = pd.read_csv("../data/raw/defenders/C_Defender_hockeyskater.csv")
 
@@ -224,7 +262,7 @@ def execute_commenceGameNight():
     #load yesterday game schedule
     get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
     get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
-    file_to_delete = target_directory / f"games_{YESTERDAY_STR}.csv"
+
     b2b_teams = get_yesterdayGame
 
     # Load trimmed data

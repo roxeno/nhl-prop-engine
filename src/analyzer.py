@@ -1,4 +1,4 @@
-from scipy.stats import poisson
+from scipy.stats import poisson, nbinom
 from lineup_override import LINEUP_OVERRIDES
 from datetime import datetime
 from pathlib import Path
@@ -22,15 +22,14 @@ cachefile = outputDirCache / f"{today}-game.csv"
 games_played = 12
 OPP_WEIGHT = games_played / (games_played + 15)
 
+SOG_DISPERSION_R = 2.68  
 
-
-#playerId,name,playerTeam,home_or_away,shots_per_60,fenwick_per_60,career_shots_per_60,opponent,blockedShotsPer60,careerblockedShotsPer60,blendedavgtoimin
-#shots_per_60,fenwick_per_60,career_shots_per_60,blockedShotsPer60,careerblockedShotsPer60,blendedavgtoimin
-import pandas as pd
-import numpy as np
-from scipy.stats import poisson
-import shutil
-import os
+def negbin_sf(k, mu, r=SOG_DISPERSION_R):
+    """P(X >= k) for Negative Binomial with mean mu, dispersion r."""
+    if mu <= 0:
+        return 0.0
+    p = r / (r + mu)
+    return float(nbinom.sf(k - 1, n=r, p=p))
 
 def execute_calculation():
     df = pd.read_csv(file)
@@ -67,8 +66,7 @@ def execute_calculation():
     df['home_factor'] = np.where(df['home_or_away'] == 'home', 1.05, 0.97)
     
     # Shrink goalie SV% toward league mean, then scale to shots effect
-    LEAGUE_SV = 0.905
-    SHRINK_GAMES = 20
+    LEAGUE_SV = 0.892
     g_sv = df['sv_pct'].fillna(LEAGUE_SV)
     # assume we have goalie games played; if not, use a flat 0.7 weight
     g_sv_shrunk = 0.7 * g_sv + 0.3 * LEAGUE_SV
@@ -101,8 +99,8 @@ def execute_calculation():
 
     for n in range(1, 6):
         df[f'p_at_least_{n}'] = df['expectedLambda'].apply(
-        lambda lam: 0.0 if lam <= 0 else poisson.sf(k=n-1, mu=lam)
-        )
+        lambda lam: negbin_sf(n, lam)
+    )
 
     # HD fraction from blended rates (stable, player-specific signal)
     df['hd_fraction'] = (df['blended_hd_per_60'] / df['blended_shots_per60'].replace(0, np.nan)).clip(0.10, 0.55)
@@ -115,7 +113,9 @@ def execute_calculation():
     df.loc[df['expectedLambda'] <= 0, 'expectedLambda_hd'] = 0.0
 
     for n in range(1, 4):
-        df[f'p_hd_at_least_{n}'] = df['expectedLambda_hd'].apply(lambda lam: poisson.sf(k=n-1, mu=lam))
+        df[f'p_hd_at_least_{n}'] = df['expectedLambda_hd'].apply(
+        lambda lam: negbin_sf(n, lam) if lam > 0 else 0.0
+    )
 
     # ==========================================
     # GOALS LOGIC (xG & Probability)
@@ -159,10 +159,11 @@ def execute_calculation():
                   'expectedLambda', 'lambda_5v5', 'lambda_pp', 
                   'expectedLambda_hd',
                   'p_at_least_1', 'p_at_least_2', 'p_at_least_3', 'p_at_least_4', 'p_at_least_5',
-                  'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3',
+                  'p_hd_at_least_1', 'p_hd_at_least_2', 'p_hd_at_least_3','5v5_rate', '5on5_toi', '5on4_toi',
+                  'total_shots', 'pp_shots', '5v5_shots', '5on4_shots_per_60', '5on4_avg_toi_min',
                   'blended_shots_per60', 'blended_hd_per_60', 'blendedavgtoimin', 'blended_hd_pct','blended_non_hd_pct','sv_pct', 
                   'player_team_b2b', 'opponent_b2b', 'fatigue_multiplier', 'manual_override', 
-                  'expectedGoals', 'p_at_least_1_goal']
+                  'expectedGoals', 'p_at_least_1_goal','opponent_weighted_XGA','leagueAvgXGAper60','home_factor', 'goalie_factor','opponent_factor']
     
     df[final_cols].to_csv(final_destination, index=False)
     shutil.copy(final_destination, cachefile)
