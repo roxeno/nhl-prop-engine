@@ -20,6 +20,8 @@ DOWNLOAD_DIR.mkdir(exist_ok=True)  # Ensures the folder exists
 
 TODAY_STR = date.today().strftime("%Y-%m-%d")
 
+goalieurl = "https://www.dailyfaceoff.com/_next/data/wgyrHl09DfpZt22-TVmVK/starting-goalies.json"
+
 def get_yesterday_str():
     """Returns yesterday's date in YYYY-MM-DD format."""
     yesterday = datetime.now() - timedelta(days=1)
@@ -94,7 +96,7 @@ def execute_skater_season():
     print("Download complete")
 
 def execute_today_goalie():
-    url = "https://www.dailyfaceoff.com/_next/data/_p9kWHBA47ELku39dkVwt/starting-goalies.json"
+    url = goalieurl
     target_directory = DOWNLOAD_DIR/'playingToday'
     filename = f'goalie_{TODAY_STR}.csv'
     file_to_delete = target_directory / f"goalie_{yesterday_str}.csv"

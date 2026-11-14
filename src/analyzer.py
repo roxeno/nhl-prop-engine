@@ -19,10 +19,12 @@ today = datetime.now().strftime("%Y-%m-%d")
 outputDirCache = Path("../data/logs/")
 cachefile = outputDirCache / f"{today}-game.csv"
 
-games_played = 12
+df = pd.read_csv(file)
+
+games_played = int(df['games_played'].median())
 OPP_WEIGHT = games_played / (games_played + 15)
 
-SOG_DISPERSION_R = 2.68  
+SOG_DISPERSION_R = 4.09
 
 def negbin_sf(k, mu, r=SOG_DISPERSION_R):
     """P(X >= k) for Negative Binomial with mean mu, dispersion r."""

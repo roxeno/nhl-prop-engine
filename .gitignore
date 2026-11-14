@@ -15,10 +15,7 @@ data/raw/
 data/trimmedDefenders/
 data/trimmedSkaters/
 
-# src file
-src/apple.py
-src/bean.py
-src/picks.csv
+fruits/*
 
 # OS
 .DS_Store

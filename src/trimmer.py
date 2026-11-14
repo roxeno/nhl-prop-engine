@@ -21,8 +21,8 @@ YESTERDAY_STR = get_yesterday_str()
 target_directory = Path("../data/playingToday")
 
 #K tuning ; Tuning based on gamesplayed; Early season trust career; Late season trust season stats
-K_SEASON = 12   # lower → trust current season sooner
-K_CAREER = 40   # higher → down-weight 1-year careers
+K_SEASON = 6  # lower → trust current season sooner
+K_CAREER = 25   # higher → down-weight 1-year careers
 
 #outputfile
 output_dir_skater = Path("../data/trimmedSkaters/")
