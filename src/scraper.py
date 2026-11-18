@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 import argparse
 import zipfile
+import re
 
 import csv
 import sys
@@ -20,7 +21,6 @@ DOWNLOAD_DIR.mkdir(exist_ok=True)  # Ensures the folder exists
 
 TODAY_STR = date.today().strftime("%Y-%m-%d")
 
-goalieurl = "https://www.dailyfaceoff.com/_next/data/wgyrHl09DfpZt22-TVmVK/starting-goalies.json"
 
 def get_yesterday_str():
     """Returns yesterday's date in YYYY-MM-DD format."""
@@ -28,6 +28,47 @@ def get_yesterday_str():
     return yesterday.strftime("%Y-%m-%d")
 
 yesterday_str = get_yesterday_str()
+
+def get_safe_sv(val):
+    if val is None or val == "" or val == 0 or val == "0":
+        return 0.900
+        
+    try:
+        sv = float(val)
+        if sv > 1.0:  # In case they return 91.5 instead of 0.915
+                sv = sv / 100.0
+        if sv < 0.500: # If it's still somehow 0, default to average
+                return 0.892
+        return sv
+    except (ValueError, TypeError):
+            return 0.900
+
+def get_dailyfaceoff_build_id():
+    """Fetches the main page and extracts the Next.js buildId."""
+    url = "https://www.dailyfaceoff.com/starting-goalies"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        # Use Regex to find "buildId":"[the_key]"
+        match = re.search(r'buildId":\s?"([a-zA-Z0-9_-]+)"', response.text)
+        
+        if match:
+            return match.group(1)
+        else:
+            print("❌ Could not find buildId in the HTML.")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Failed to fetch buildId: {e}")
+        return None
+
+cache = get_dailyfaceoff_build_id()
+goalieurl = f"https://www.dailyfaceoff.com/_next/data/{cache}/starting-goalies.json"
 
 
 target_folder_skater = DOWNLOAD_DIR/'raw/skaters'
@@ -122,12 +163,12 @@ def execute_today_goalie():
             goalie_data.append({
                 "franchiseName": game.get("homeTeamName"),
                 "goalie": game.get("homeGoalieName"),
-                "sv_pct": float(game.get("homeGoalieSavePercentage", 0.900))
+                "sv_pct": get_safe_sv(game.get("homeGoalieSavePercentage"))
             })
             goalie_data.append({
                 "franchiseName": game.get("awayTeamName"),
                 "goalie": game.get("awayGoalieName"),
-                "sv_pct": float(game.get("awayGoalieSavePercentage", 0.900))
+                "sv_pct": get_safe_sv(game.get("homeGoalieSavePercentage"))
             })
     if file_to_delete.exists():
         os.remove(file_to_delete)

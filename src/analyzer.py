@@ -143,8 +143,8 @@ def execute_calculation():
     ).fillna(0.10)
 
     df['p_at_least_1_goal'] = np.where(
-        df['expectedLambda'] > 0,
-        1 - (1 - df['effective_sh_pct']) ** df['expectedLambda'],
+        df['expectedGoals'] > 0,
+        1.0 - np.exp(-df['expectedGoals']),
         0.0
     )
 
