@@ -2,37 +2,34 @@ LINEUP_OVERRIDES = {
     # Anaheim Ducks
     "Ryan Poehling": 0,         # ANA - IR
     "A.J. Greer": 0,            # ANA - IR
-    "Beckett Sennecke": 0,      # ANA - DTD
 
     # Boston Bruins
     "James Hagens": 0,          # BOS - IR
 
     # Buffalo Sabres
     "Matt Grzelcyk": 0,         # BUF - IR
-    "Konsta Helenius": 0,       # BUF - DTD
+    "Justin Danforth": 0,       # BUF - IR
+    "Konsta Helenius": 0,       # BUF - IR
 
     # Calgary Flames
     "Kevin Bahl": 0,            # CGY - IR
     "Jonathan Huberdeau": 0,    # CGY - IR
 
-    # Carolina Hurricanes
-    "Pyotr Kochetkov": 0,       # CAR - DTD
+    # Carolina Hurricanes (no injuries listed)
 
     # Chicago Blackhawks
     "Bowen Byram": 0,           # CHI - IR
-    "Cole Smith": 0,            # CHI - DTD
-    "Tyler Bertuzzi": 0,        # CHI - DTD
+    "Connor Bedard": 0,         # CHI - OUT
 
     # Colorado Avalanche
     "Josh Manson": 0,           # COL - IR
     "Zachary L'Heureux": 0,     # COL - IR
     "Nathan MacKinnon": 0,      # COL - OUT
     "Cale Makar": 0,            # COL - OUT
-    "Scott Wedgewood": 0,       # COL - DTD
+    "Gavin Brindley": 0,        # COL - DTD
 
     # Columbus Blue Jackets
-    "Isac Lundestrom": 0,       # CBJ - IR
-    "Conor Garland": 0,         # CBJ - OUT
+    "Conor Garland": 0,         # CBJ - IR
     "Sean Monahan": 0,          # CBJ - DTD
 
     # Dallas Stars
@@ -43,7 +40,6 @@ LINEUP_OVERRIDES = {
     "Tyler Myers": 0,           # DAL - DTD
 
     # Detroit Red Wings
-    "Albert Johansson": 0,      # DET - IR
     "Dylan Larkin": 0,          # DET - OUT
     "Simon Edvinsson": 0,       # DET - OUT
     "William Wallinder": 0,     # DET - DTD
@@ -62,10 +58,11 @@ LINEUP_OVERRIDES = {
 
     # Los Angeles Kings
     "Artemi Panarin": 0,        # LAK - OUT
+    "Trevor Moore": 0,          # LAK - DTD
 
     # Minnesota Wild
     "Olli Maatta": 0,           # MIN - IR
-    "Filip Gustavsson": 0,      # MIN - IR
+    "Yakov Trenin": 0,          # MIN - DTD
 
     # Montreal Canadiens
     "Ivan Demidov": 0,          # MTL - IR
@@ -73,7 +70,7 @@ LINEUP_OVERRIDES = {
     "Josh Anderson": 0,         # MTL - IR
     "Chris Kreider": 0,         # MTL - IR
     "Mike Matheson": 0,         # MTL - OUT
-    "Alexandre Texier": 0,      # MTL - DTD
+    "Zack Bolduc": 0,           # MTL - DTD
 
     # Nashville Predators
     "William Trudeau": 0,       # NSH - IR
@@ -85,8 +82,6 @@ LINEUP_OVERRIDES = {
 
     # New York Islanders
     "Alexander Romanov": 0,     # NYI - IR
-    "Calum Ritchie": 0,         # NYI - IR
-    "Jean-Gabriel Pageau": 0,   # NYI - DTD
     "Logan Stanley": 0,         # NYI - DTD
 
     # New York Rangers
@@ -96,6 +91,7 @@ LINEUP_OVERRIDES = {
     "Sean Durzi": 0,            # NYR - IR
     "Alberts Smits": 0,         # NYR - IR
     "Pavel Dorofeyev": 0,       # NYR - DTD
+    "Oliver Bjorkstrand": 0,    # NYR - DTD
 
     # Ottawa Senators
     "William Eklund": 0,        # OTT - IR
@@ -111,6 +107,8 @@ LINEUP_OVERRIDES = {
     "Ryan Graves": 0,           # PIT - IR
     "Bryan Rust": 0,            # PIT - IR
     "Elmer Soderblom": 0,       # PIT - IR
+    "Nicholas Robertson": 0,    # PIT - IR
+    "Evgeni Malkin": 0,         # PIT - DTD
 
     # San Jose Sharks
     "Igor Chernyshov": 0,       # SJS - IR
@@ -119,24 +117,28 @@ LINEUP_OVERRIDES = {
 
     # Seattle Kraken
     "Jared McCann": 0,          # SEA - IR
-    "Jacob Melanson": 0,        # SEA - IR
+    "Curtis Douglas": 0,        # SEA - IR
 
     # St. Louis Blues
     "Dillon Dube": 0,           # STL - IR
     "Tyler Tucker": 0,          # STL - IR
     "Ross Johnston": 0,         # STL - DTD
+    "Connor McMichael": 0,      # STL - DTD
 
     # Tampa Bay Lightning
     "Conor Geekie": 0,          # TBL - IR
-    "Brandon Hagel": 0,         # TBL - DTD
+    "Brandon Hagel": 0,         # TBL - IR
     "Zemgus Girgensons": 0,     # TBL - DTD
 
     # Toronto Maple Leafs
     "Elvis Merzlikins": 0,      # TOR - IR
-    "Max Domi": 0,              # TOR - IR
     "Kirill Marchenko": 0,      # TOR - IR
-    "Marshall Rifai": 0,        # TOR - OUT
-    "Morgan Rielly": 0,         # TOR - DTD
+    "Colton Sissons": 0,        # TOR - IR
+    "Nick Blankenburg": 0,      # TOR - IR
+    "Miles Wood": 0,            # TOR - IR
+    "Marshall Rifai": 0,        # TOR - IR
+    "Max Domi": 0,              # TOR - OUT
+    "Oliver Ekman-Larsson": 0,  # TOR - DTD
 
     # Utah Mammoth
     "John Marino": 0,           # UTA - IR
@@ -154,6 +156,7 @@ LINEUP_OVERRIDES = {
     # Washington Capitals
     "Rasmus Sandin": 0,         # WSH - IR
     "Vincent Desharnais": 0,    # WSH - IR
+    "Cole Hutson": 0,           # WSH - DTD
 
     # Winnipeg Jets
     "Nick Bjugstad": 0,         # WPG - IR

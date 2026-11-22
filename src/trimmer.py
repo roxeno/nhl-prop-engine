@@ -250,7 +250,7 @@ def execute_opponent():
     #,'playerTeam' fenwick
     
     df = pd.merge(df, career_file_defender, on='team', how='inner')
-    df = pd.merge(df,goalie_file, on='team',how='inner')
+    df = pd.merge(df,goalie_file,  on='team',how='inner')
 
     df = df.rename(columns={'team' : 'opponent'})
     df['sv_pct'] = pd.to_numeric(df['sv_pct'], errors='coerce')
@@ -261,9 +261,15 @@ def execute_opponent():
 def execute_commenceGameNight():
     #load yesterday game schedule
     get_tonightGames = pd.read_csv(f"../data/playingToday/games_{TODAY_STR}.csv")
-    get_yesterdayGame = pd.read_csv(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
+    file_path = Path(f"../data/playingToday/games_{YESTERDAY_STR}.csv")
 
-    b2b_teams = get_yesterdayGame
+    if file_path.exists():
+        get_yesterdayGame = pd.read_csv(file_path)
+        b2b_teams = get_yesterdayGame
+    else:
+        print(f"File not found: {file_path}")
+        get_yesterdayGame = pd.DataFrame()
+        b2b_teams = pd.DataFrame()
 
     # Load trimmed data
     trimmed_file_skater = pd.read_csv('../data/trimmedSkaters/TrimmedSeason_hockeyskater.csv')
